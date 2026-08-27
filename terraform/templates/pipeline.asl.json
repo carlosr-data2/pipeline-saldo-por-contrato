@@ -1,0 +1,61 @@
+{
+  "Comment": "Fechamento diário de saldo por contrato: bronze -> silver (gate) -> gold. A Step Function é a dona única dos retries (jobs Glue com MaxRetries=0). Falha => execução FAILED => EventBridge -> SNS; retomada via redrive.",
+  "QueryLanguage": "JSONata",
+  "StartAt": "ResolverData",
+  "States": {
+    "ResolverData": {
+      "Type": "Pass",
+      "Comment": "dt explícito no input (reprocessamento) ou a data corrente em BRT (UTC-3, agendamento das 22:05)",
+      "Output": "{% { 'dt': $exists($states.input.dt) ? $states.input.dt : $fromMillis($toMillis($now()) - 10800000, '[Y0001]-[M01]-[D01]') } %}",
+      "Next": "Bronze"
+    },
+    "Bronze": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Arguments": "{% { 'JobName': '${job_bronze}' } %}",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 60,
+          "MaxAttempts": 2,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Output": "{% $states.input %}",
+      "Next": "Silver"
+    },
+    "Silver": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Arguments": "{% { 'JobName': '${job_silver}', 'Arguments': { '--dt': $states.input.dt } } %}",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 60,
+          "MaxAttempts": 2,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Output": "{% $states.input %}",
+      "Next": "Gold"
+    },
+    "Gold": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Arguments": "{% { 'JobName': '${job_gold}', 'Arguments': { '--dt': $states.input.dt } } %}",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 60,
+          "MaxAttempts": 2,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Output": "{% $states.input %}",
+      "End": true
+    }
+  }
+}

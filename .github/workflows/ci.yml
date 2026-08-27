@@ -56,10 +56,6 @@ jobs:
       - name: fmt e validate
         working-directory: terraform
         run: |
-          if [ -n "$(find . -name '*.tf' -print -quit)" ]; then
-            terraform fmt -check -recursive
-            terraform init -backend=false -input=false
-            terraform validate
-          else
-            echo "sem arquivos terraform ainda"
-          fi
+          terraform fmt -check -recursive
+          terraform init -backend=false -input=false
+          terraform validate

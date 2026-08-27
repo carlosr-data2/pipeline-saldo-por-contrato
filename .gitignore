@@ -24,3 +24,6 @@ jars/
 *.tfstate
 *.tfstate.backup
 terraform.tfvars
+
+# artefatos gerados pelo terraform (archive_file)
+terraform/.artefatos/
