@@ -1,0 +1,26 @@
+# anotacoes pessoais (nao versionadas)
+private/
+
+# saidas de execucao local
+warehouse/
+logs/
+dist/
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# spark local
+metastore_db/
+derby.log
+spark-warehouse/
+jars/
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
