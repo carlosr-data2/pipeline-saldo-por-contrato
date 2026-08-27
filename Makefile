@@ -8,7 +8,7 @@
 
 COMPOSE := docker compose
 
-.PHONY: build demo test lint shell limpar
+.PHONY: build demo test lint shell limpar relogio
 
 build:
 	$(COMPOSE) build
@@ -29,6 +29,14 @@ shell: build
 # container via bind mount — apagar no host falharia com Permission denied
 limpar:
 	$(COMPOSE) run --rm pipeline rm -rf warehouse logs
+
+# WSL2: após hibernação do Windows, o relógio da VM pode divergir do host.
+# O Iceberg valida timestamps monotônicos nos commits de metadado e recusa
+# escrever com relógio inconsistente ("Invalid update timestamp ..."). Rodar
+# este alvo (ou `wsl --shutdown` no PowerShell) antes da demo resolve.
+relogio:
+	sudo hwclock -s
+	date
 
 # Trilha AWS — depois de `terraform apply` (ver docs/runbook_aws.md):
 #   make aws-publicar-artefatos BUCKET=<saida `bucket` do terraform>

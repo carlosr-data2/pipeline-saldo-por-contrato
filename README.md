@@ -54,6 +54,14 @@ Sem Docker (venv): `pip install -r requirements-dev.txt`, Java 17, jar do Iceber
 e inclua-o via `PYSPARK_SUBMIT_ARGS="--jars $ICEBERG_JAR pyspark-shell"`), depois
 `bash scripts/demo.sh`.
 
+**Solução de problemas (WSL2):**
+- `Invalid update timestamp ...: before the latest metadata log entry` — o relógio
+  da VM do WSL divergiu do host (comum após hibernação do Windows); o Iceberg
+  recusa commit de metadado com relógio inconsistente, de propósito. Corrija com
+  `make relogio` (ou `wsl --shutdown` no PowerShell) e rode `make limpar && make demo`.
+- `Permission denied` ao limpar `warehouse/` — os arquivos pertencem ao root do
+  container (bind mount); use `make limpar`, que remove de dentro do container.
+
 ## Trilha AWS (Terraform)
 
 Toda a arquitetura é provisionada por IaC — S3 com retenção 5y hot/10y cold,
