@@ -25,8 +25,10 @@ lint: build
 shell: build
 	$(COMPOSE) run --rm pipeline bash
 
+# roda dentro do container: os arquivos do warehouse são criados pelo root do
+# container via bind mount — apagar no host falharia com Permission denied
 limpar:
-	rm -rf warehouse
+	$(COMPOSE) run --rm pipeline rm -rf warehouse logs
 
 # Trilha AWS — depois de `terraform apply` (ver docs/runbook_aws.md):
 #   make aws-publicar-artefatos BUCKET=<saida `bucket` do terraform>
