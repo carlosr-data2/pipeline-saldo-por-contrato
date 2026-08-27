@@ -8,13 +8,19 @@
 
 COMPOSE := docker compose
 
-.PHONY: build demo test lint shell limpar relogio
+.PHONY: build demo relatorio test lint shell limpar relogio
 
 build:
 	$(COMPOSE) build
 
 demo: build
 	$(COMPOSE) run --rm pipeline bash scripts/demo.sh
+
+# Mostra o estado final do warehouse já processado (~30s), sem reprocessar nada.
+# Plano B da demonstração ao vivo: rodar `make demo` antes da sessão e, na hora,
+# apresentar por aqui + reexecutar um único dia para provar idempotência.
+relatorio:
+	$(COMPOSE) run --rm pipeline python scripts/relatorio_demo.py
 
 test: build
 	$(COMPOSE) run --rm pipeline python -m pytest -q
