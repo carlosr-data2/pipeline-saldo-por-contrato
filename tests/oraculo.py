@@ -26,7 +26,9 @@ def _tipar(linha: dict) -> dict:
         v = (linha.get(campo) or "").strip() or None
         t[campo] = v
     try:
-        t["valor_lancamento"] = Decimal(t["valor_lancamento"]).quantize(Decimal("0.01")) if t["valor_lancamento"] else None
+        t["valor_lancamento"] = (
+            Decimal(t["valor_lancamento"]).quantize(Decimal("0.01")) if t["valor_lancamento"] else None
+        )
     except ArithmeticError:
         t["valor_lancamento"] = None
     try:
@@ -120,8 +122,10 @@ def processar(caminho_csv: str, caminho_cosif: str, lookback_dias: int = 7):
             if not motivos:
                 validas_por_id[t["id_transacao"]].append(t)
         perdedoras = set()
-        for id_tx, grupo in validas_por_id.items():
-            grupo.sort(key=lambda t: (t["dt_lancamento"] is None, t["dt_lancamento"] or datetime.min, _hash_linha(t)))
+        for grupo in validas_por_id.values():
+            grupo.sort(
+                key=lambda t: (t["dt_lancamento"] is None, t["dt_lancamento"] or datetime.min, _hash_linha(t))
+            )
             for t in grupo[1:]:
                 perdedoras.add(id(t))
 
