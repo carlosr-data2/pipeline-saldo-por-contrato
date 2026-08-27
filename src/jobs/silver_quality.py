@@ -62,7 +62,11 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
         )
 
     with log.etapa("leitura_bronze", dt=dt):
-        bronze_dia = spark.table(cfg.tb_bronze).where(F.col("dt_processamento") == F.lit(dt_ref)).select(*NOMES_CAMPOS)
+        bronze_dia = (
+            spark.table(cfg.tb_bronze)
+            .where(F.col("dt_processamento") == F.lit(dt_ref))
+            .select(*NOMES_CAMPOS)
+        )
         total_bronze = bronze_dia.count()
         if total_bronze == 0:
             raise ValueError(f"partição {dt} vazia no Bronze — falha upstream ou data errada")
@@ -72,7 +76,10 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
         inicio_lookback = dt_ref - timedelta(days=cfg.dedup_lookback_dias)
         ids_historico = (
             spark.table(cfg.tb_silver)
-            .where((F.col("dt_processamento") >= F.lit(inicio_lookback)) & (F.col("dt_processamento") < F.lit(dt_ref)))
+            .where(
+                (F.col("dt_processamento") >= F.lit(inicio_lookback))
+                & (F.col("dt_processamento") < F.lit(dt_ref))
+            )
             .select("id_transacao")
         )
         avaliado = aplicar_regras(bronze_dia, dominio, ids_historico)

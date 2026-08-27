@@ -18,12 +18,15 @@ def criar_spark(app_name: str, cfg: Config) -> SparkSession:
         # Determinismo e otimização:
         .config("spark.sql.session.timeZone", "America/Sao_Paulo")
         .config("spark.sql.adaptive.enabled", "true")
-        .config("spark.sql.adaptive.skewJoin.enabled", "true")  # mitigação de skew (contas concentradas)
+        # mitigação de skew (contas concentradas)
+        .config("spark.sql.adaptive.skewJoin.enabled", "true")
         .config("spark.sql.shuffle.partitions", str(cfg.shuffle_partitions))
     )
     if cfg.impl == "glue":
         builder = (
-            builder.config(f"spark.sql.catalog.{cfg.catalogo}.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog")
+            builder.config(
+                f"spark.sql.catalog.{cfg.catalogo}.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"
+            )
             .config(f"spark.sql.catalog.{cfg.catalogo}.warehouse", cfg.warehouse)
             .config(f"spark.sql.catalog.{cfg.catalogo}.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
         )
