@@ -1,9 +1,0 @@
-services:
-  pipeline:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    image: pipeline-saldo-por-contrato:local
-    volumes:
-      - .:/app
-    working_dir: /app
