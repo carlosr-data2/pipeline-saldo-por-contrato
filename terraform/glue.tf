@@ -18,6 +18,7 @@ data "archive_file" "src_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../src"
   output_path = "${path.module}/.artefatos/src.zip"
+  excludes    = ["jobs/__pycache__", "lib/__pycache__"] # bytecode local não vai ao Glue nem suja o hash
 }
 
 resource "aws_s3_object" "src_zip" {

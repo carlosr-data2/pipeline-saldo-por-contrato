@@ -56,7 +56,7 @@ e inclua-o via `PYSPARK_SUBMIT_ARGS="--jars $ICEBERG_JAR pyspark-shell"`), depoi
 
 ## Trilha AWS (Terraform)
 
-Toda a arquitetura é provisionada por IaC — S3 com lifecycle 5y hot/10y cold,
+Toda a arquitetura é provisionada por IaC — S3 com retenção 5y hot/10y cold,
 Glue Data Catalog e 3 jobs, Step Functions, EventBridge Scheduler com DLQ, SNS,
 alarmes-sentinela, IAM de menor privilégio e budget de US$ 10. Passo a passo,
 **estimativa de custo antes de cada execução** e checklist de evidências:

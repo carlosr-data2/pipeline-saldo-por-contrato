@@ -150,6 +150,25 @@ def test_reprocessamento_e_idempotente(spark, cfg, csvs):
     assert antes == depois
 
 
+def test_gold_recusa_pular_dia_publicado_sem_snapshot(spark, cfg, csvs):
+    """Guarda de continuidade: se o Gold de um dia não rodou (ex.: gate reprovado)
+    mas o Silver foi publicado, o dia seguinte NÃO pode somar por cima — o
+    movimento do dia pulado sumiria do saldo em silêncio, para sempre."""
+    from jobs.gold_saldo import SnapshotDescontinuo
+
+    cfg = dataclasses.replace(cfg, max_quarentena_pct=80.0)
+    transacional, cosif = csvs
+    bronze(spark, cfg, LOG, transacional, cosif)
+    silver(spark, cfg, LOG, "2026-08-20")
+    silver(spark, cfg, LOG, "2026-08-21")
+    # dia 20 publicado no Silver, mas Gold do dia 20 nunca rodou:
+    with pytest.raises(SnapshotDescontinuo):
+        gold(spark, cfg, LOG, "2026-08-21")
+    # processado em ordem, o mesmo dia passa
+    gold(spark, cfg, LOG, "2026-08-20")
+    gold(spark, cfg, LOG, "2026-08-21")
+
+
 def test_gate_bloqueia_fechamento_com_qualidade_ruim(spark, cfg, csvs):
     transacional, cosif = csvs
     bronze(spark, cfg, LOG, transacional, cosif)

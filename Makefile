@@ -37,14 +37,17 @@ MAVEN := https://repo1.maven.org/maven2/org/apache/iceberg
 
 .PHONY: baixar-jars aws-publicar-artefatos
 
+# --fail: página de erro HTTP não vira "jar"; o teste de tamanho barra download parcial
 baixar-jars:
 	mkdir -p jars
 	test -s jars/iceberg-spark-runtime-3.5_2.12-$(ICEBERG_VERSAO).jar || \
-	  curl -sSL --retry 5 --retry-delay 15 -o jars/iceberg-spark-runtime-3.5_2.12-$(ICEBERG_VERSAO).jar \
+	  curl -sSL --fail --retry 5 --retry-delay 15 -o jars/iceberg-spark-runtime-3.5_2.12-$(ICEBERG_VERSAO).jar \
 	    "$(MAVEN)/iceberg-spark-runtime-3.5_2.12/$(ICEBERG_VERSAO)/iceberg-spark-runtime-3.5_2.12-$(ICEBERG_VERSAO).jar"
+	test "$$(stat -c%s jars/iceberg-spark-runtime-3.5_2.12-$(ICEBERG_VERSAO).jar)" -gt 1000000
 	test -s jars/iceberg-aws-bundle-$(ICEBERG_VERSAO).jar || \
-	  curl -sSL --retry 5 --retry-delay 15 -o jars/iceberg-aws-bundle-$(ICEBERG_VERSAO).jar \
+	  curl -sSL --fail --retry 5 --retry-delay 15 -o jars/iceberg-aws-bundle-$(ICEBERG_VERSAO).jar \
 	    "$(MAVEN)/iceberg-aws-bundle/$(ICEBERG_VERSAO)/iceberg-aws-bundle-$(ICEBERG_VERSAO).jar"
+	test "$$(stat -c%s jars/iceberg-aws-bundle-$(ICEBERG_VERSAO).jar)" -gt 1000000
 
 aws-publicar-artefatos: baixar-jars
 	test -n "$(BUCKET)" || (echo "uso: make aws-publicar-artefatos BUCKET=<bucket>" && exit 1)

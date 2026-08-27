@@ -27,13 +27,14 @@
     },
     "Silver": {
       "Type": "Task",
+      "Comment": "1 retentativa apenas: a falha dominante deste estágio (gate de qualidade reprovado) é determinística — repetir não conserta dado ruim, só queima janela; o Glue não distingue o tipo de erro para a SFN, então o orçamento de retry é menor onde o erro tende a ser de negócio",
       "Resource": "arn:aws:states:::glue:startJobRun.sync",
       "Arguments": "{% { 'JobName': '${job_silver}', 'Arguments': { '--dt': $states.input.dt } } %}",
       "Retry": [
         {
           "ErrorEquals": ["States.ALL"],
           "IntervalSeconds": 60,
-          "MaxAttempts": 2,
+          "MaxAttempts": 1,
           "BackoffRate": 2,
           "JitterStrategy": "FULL"
         }
@@ -43,13 +44,14 @@
     },
     "Gold": {
       "Type": "Task",
+      "Comment": "1 retentativa: reconciliação divergente e snapshot descontínuo são determinísticos (mesma lógica do Silver)",
       "Resource": "arn:aws:states:::glue:startJobRun.sync",
       "Arguments": "{% { 'JobName': '${job_gold}', 'Arguments': { '--dt': $states.input.dt } } %}",
       "Retry": [
         {
           "ErrorEquals": ["States.ALL"],
           "IntervalSeconds": 60,
-          "MaxAttempts": 2,
+          "MaxAttempts": 1,
           "BackoffRate": 2,
           "JitterStrategy": "FULL"
         }

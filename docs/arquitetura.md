@@ -118,8 +118,17 @@ particionado, conforme o contrato); shuffle dominante no dedup (janela por
 
 ## Retenção e manutenção do lakehouse
 
-- **5 anos hot / 10 anos cold**: lifecycle S3 no prefixo `warehouse/` —
-  Standard → Glacier em 1.825 dias, expiração em 5.475 (Terraform, `s3.tf`).
+- **5 anos hot / 10 anos cold**, com um cuidado que separa raw de warehouse:
+  - `raw/` (arquivos imutáveis, nunca referenciados por metadado vivo): lifecycle
+    S3 por idade é seguro — Standard → Glacier em 1.825 dias, expiração em 5.475
+    (Terraform, `s3.tf`).
+  - `warehouse/` (Iceberg): lifecycle por **idade do objeto é uma armadilha** — um
+    data file antigo continua referenciado pelo metadado ATUAL da tabela;
+    transicioná-lo para Glacier quebra a leitura (`InvalidObjectState`) e
+    expirá-lo corrompe a tabela. A retenção aqui é do próprio Iceberg, por
+    **partição de negócio**: mover/remover partições além de 5 anos na manutenção
+    agendada (`DELETE`/archive por `dt_referencia`), seguido de `expire_snapshots`
+    para liberar os arquivos de fato.
 - **Manutenção Iceberg** (evolução de produção): `rewrite_data_files`
   (compactação de arquivos pequenos do overwrite diário) e `expire_snapshots`
   (reter ~30 dias de time travel) como job agendado semanal fora da janela.
