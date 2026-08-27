@@ -1,0 +1,4 @@
+# Copie para terraform.tfvars e ajuste:
+email_alertas = "seu-email@exemplo.com"
+# regiao      = "us-east-1"
+# orcamento_usd = 10
