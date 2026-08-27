@@ -5,20 +5,7 @@ O mesmo código roda local (catálogo Iceberg "hadoop" em filesystem) e no AWS G
 job importa GlueContext, o que mantém o motor portável.
 """
 import os
-import sys
 from dataclasses import dataclass
-
-
-def _param(nome: str, padrao: str) -> str:
-    """Resolve um parâmetro: variável de ambiente (trilha local) ou argumento
-    de job no formato do Glue (--NOME valor), que entrega parâmetros via argv."""
-    if nome in os.environ:
-        return os.environ[nome]
-    argv = sys.argv
-    chave = f"--{nome}"
-    if chave in argv and argv.index(chave) + 1 < len(argv):
-        return argv[argv.index(chave) + 1]
-    return padrao
 
 
 @dataclass(frozen=True)
