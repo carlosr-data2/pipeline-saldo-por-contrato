@@ -34,13 +34,13 @@ class Config:
     @classmethod
     def do_ambiente(cls) -> "Config":
         return cls(
-            catalogo=os.environ.get("SALDO_CATALOGO", "local"),
-            impl=os.environ.get("SALDO_CATALOGO_IMPL", "hadoop"),
-            warehouse=os.environ.get("SALDO_WAREHOUSE", os.path.abspath("warehouse")),
-            max_quarentena_pct=float(os.environ.get("SALDO_GATE_MAX_QUARENTENA_PCT", "10.0")),
-            tolerancia_reconciliacao=float(os.environ.get("SALDO_GATE_TOLERANCIA_BRL", "0.01")),
-            dedup_lookback_dias=int(os.environ.get("SALDO_DEDUP_LOOKBACK_DIAS", "7")),
-            shuffle_partitions=int(os.environ.get("SALDO_SHUFFLE_PARTITIONS", "8")),
+            catalogo=_param("SALDO_CATALOGO", "local"),
+            impl=_param("SALDO_CATALOGO_IMPL", "hadoop"),
+            warehouse=_param("SALDO_WAREHOUSE", os.path.abspath("warehouse")),
+            max_quarentena_pct=float(_param("SALDO_GATE_MAX_QUARENTENA_PCT", "10.0")),
+            tolerancia_reconciliacao=float(_param("SALDO_GATE_TOLERANCIA_BRL", "0.01")),
+            dedup_lookback_dias=int(_param("SALDO_DEDUP_LOOKBACK_DIAS", "7")),
+            shuffle_partitions=int(_param("SALDO_SHUFFLE_PARTITIONS", "8")),
         )
 
     # ---- nomes totalmente qualificados das tabelas (catalogo.namespace.tabela) ----

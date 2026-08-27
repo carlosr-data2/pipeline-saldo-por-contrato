@@ -33,6 +33,11 @@ class ReconciliacaoDivergente(RuntimeError):
     """Agregações independentes não bateram — nada foi publicado."""
 
 
+class SnapshotDescontinuo(RuntimeError):
+    """Há dia publicado no Silver sem snapshot Gold antes de dt_ref — somar por
+    cima omitiria movimento válido do saldo em silêncio. Reprocessar em ordem."""
+
+
 def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
     dt_ref = date.fromisoformat(dt)
 
@@ -81,6 +86,23 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
         movimento = movimento_por_contrato(silver_dia)
         anterior = spark.table(cfg.tb_saldo_contrato).where(F.col("dt_referencia") < F.lit(dt_ref))
         dt_anterior = anterior.agg(F.max("dt_referencia")).collect()[0][0]
+
+        # Guarda de continuidade: se existe dia PUBLICADO no Silver entre a base
+        # do snapshot e dt_ref sem snapshot Gold (ex.: gate reprovado no dia D e o
+        # agendador seguiu para D+1), somar por cima pularia o movimento de D em
+        # silêncio — para sempre. Dias sem lote (sem Silver) não bloqueiam.
+        filtro_lacuna = F.col("dt_processamento") < F.lit(dt_ref)
+        if dt_anterior is not None:
+            filtro_lacuna = filtro_lacuna & (F.col("dt_processamento") > F.lit(dt_anterior))
+        silver_sem_gold = (
+            spark.table(cfg.tb_silver).where(filtro_lacuna).select("dt_processamento").distinct()
+        )
+        dias_pulados = [str(r["dt_processamento"]) for r in silver_sem_gold.collect()]
+        if dias_pulados:
+            raise SnapshotDescontinuo(
+                f"dias publicados no Silver sem snapshot Gold: {sorted(dias_pulados)} — "
+                f"processe-os em ordem antes de {dt} (base atual do snapshot: {dt_anterior})"
+            )
         snapshot_ant = (
             anterior.where(F.col("dt_referencia") == F.lit(dt_anterior))
             if dt_anterior is not None
