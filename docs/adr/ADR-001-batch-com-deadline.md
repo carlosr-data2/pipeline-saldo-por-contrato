@@ -1,24 +1,47 @@
 # ADR-001 — Batch crítico com deadline, não event-driven
 
-## Contexto
-O caso é um fechamento contábil regulatório: lote diário (`id_lote` por dia,
-partição `dt_processamento`), consumidor único (fechamento D+1 06:00) e requisito
-de latência expresso como **deadline**, não como frescor contínuo.
+## Contexto: classificar o problema antes de desenhar a solução
+
+A primeira decisão de arquitetura não é de tecnologia — é de **classificação do
+problema**. Três características do caso apontam a mesma direção: o dado chega
+em **lote diário** (há um `id_lote` por dia e uma partição `dt_processamento`);
+o consumidor é **um só e tem hora marcada** (o fechamento contábil de D+1 às
+06:00); e o requisito de latência é um **deadline**, não frescor contínuo —
+ninguém precisa do saldo atualizado às 14h37, precisa dele correto antes das
+06:00.
+
+Isso é a definição de um *batch crítico com deadline*. Errar essa classificação
+custaria caro: tratar como streaming adicionaria complexidade permanente para
+resolver um problema que não existe; tratar como batch "relaxado" ignoraria que
+perder as 06:00 tem consequência regulatória.
 
 ## Decisão
-Pipeline batch disparado por **tempo** (EventBridge Scheduler, 22:05
-America/Sao_Paulo), não pela chegada de arquivo nem por stream de eventos.
+
+Pipeline batch disparado por **tempo**: EventBridge Scheduler às 22:05
+(America/Sao_Paulo), logo após a janela em que o dado fica pronto. O gatilho é o
+relógio + a verificação de prontidão — não a chegada de um arquivo, não um
+evento.
 
 ## Alternativas rejeitadas
-- **Streaming (Kinesis/Firehose + Spark Structured Streaming)**: não existe fonte
-  de eventos no caso; adicionaria custo fixo e complexidade operacional sem reduzir
-  o único risco que importa (perder as 06:00). Estado de agregação contínua por
-  80M+ contas é caro e desnecessário quando o consumidor é diário.
-- **Event-driven por S3 (`s3:ObjectCreated` → pipeline)**: acopla o disparo ao
-  layout de entrega do upstream (n arquivos = n eventos, precisa de marcador de
-  lote completo). Vira a escolha certa se o contrato de entrega mudar para
-  "arquivo-marcador de lote fechado"; registrado como evolução, não como default.
+
+**1. Streaming (Kinesis/Firehose + Spark Structured Streaming).** Não existe
+fonte de eventos no caso — o upstream entrega lote. Adotar streaming exigiria
+inventar a fonte, pagar custo fixo de infraestrutura contínua e manter estado de
+agregação para 80M+ de contas — tudo isso sem reduzir o único risco que importa
+(perder as 06:00). Streaming seria a escolha certa se o consumidor precisasse do
+saldo intradiário; este consumidor não precisa.
+
+**2. Event-driven por chegada de arquivo (`s3:ObjectCreated` → pipeline).**
+Tem apelo — "processa assim que chegar" — mas acopla o disparo ao layout de
+entrega do upstream: se o lote vier em N arquivos, são N eventos, e passa a ser
+necessário um marcador de "lote completo" para não processar pela metade. Vira
+a escolha certa **se** o contrato de entrega evoluir para incluir um
+arquivo-marcador de lote fechado — registrado aqui como evolução natural, não
+como default.
 
 ## Consequências
-O gatilho por tempo exige detecção de **ausência** (lote não chegou / execução não
-iniciou) — coberta pelos alarmes-sentinela e pela DLQ do disparo (ADR-003).
+
+Gatilho por tempo tem um ponto cego: ele não percebe sozinho que o lote **não
+chegou** ou que o disparo **se perdeu**. Por isso esta decisão obriga as duas
+seguintes: detecção de ausência via alarmes-sentinela e DLQ no disparo
+(ADR-003). Quem escolhe cron assume o dever de vigiar o silêncio.

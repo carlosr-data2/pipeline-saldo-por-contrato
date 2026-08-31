@@ -1,22 +1,44 @@
 # ADR-013 — Dados de exemplo versionados no repositório
 
-## Contexto
-O dataset (CSV de 31 MB + referencial COSIF) precisa estar à mão para
-clone-and-run, testes de CI e para o ZIP do projeto (limite prático de ~25 MB de
-arquivo).
+## Contexto: uma decisão pequena que define a primeira impressão
+
+O dataset de exemplo (CSV de 31 MB + referencial COSIF) precisa estar disponível em
+três lugares: na máquina de quem clona o repositório (para o `make demo`
+funcionar de primeira), no CI (o teste-oráculo processa o dataset completo a
+cada push), e no ZIP do projeto (que tem o limite prático de ~25 MB de arquivo).
+
+A decisão parece burocrática, mas define a **primeira experiência do
+quem clona**: `git clone && make demo` funcionando sem nenhum passo extra — ou
+uma lista de pré-requisitos antes da primeira execução.
 
 ## Decisão
-Versionar os CSVs em `dados/` no git, sem LFS: 31 MB < limites do GitHub
-(100 MB/arquivo), e quem clona roda `make demo` direto após o clone — zero
-passos de download. O CI usa os mesmos dados no teste-oráculo.
+
+Versionar os CSVs diretamente em `dados/`, no git, **sem LFS**. Os 31 MB estão
+confortavelmente abaixo dos limites do GitHub (100 MB por arquivo), o clone traz
+tudo, e o CI usa os mesmos arquivos sem download adicional. O dado é imutável
+(é o insumo do projeto, não muda), então o custo clássico de versionar dados —
+histórico inchando a cada atualização — não se aplica.
 
 ## Alternativas rejeitadas
-- **Git LFS**: adiciona dependência de ferramenta no clone de quem usa o repositório para
-  economizar 31 MB — atrito sem benefício neste tamanho.
-- **Download externo (S3/link)**: quebra o clone-and-run offline e cria um ponto
-  de falha na hora em que precisa rodar.
+
+**1. Git LFS.** Resolveria um problema que não existe neste tamanho: LFS vale a
+pena quando arquivos são grandes ou mudam com frequência. Aqui, adicionaria uma
+dependência de ferramenta no clone de quem usa o repositório (quem não tem LFS instalado
+recebe ponteiros em vez de dados — e uma demo quebrada) para economizar 31 MB
+que o git puro carrega sem esforço.
+
+**2. Download externo (S3, link no README).** Quebra o clone-and-run offline,
+acrescenta um passo manual antes da primeira execução e cria um ponto de falha
+externo — exatamente o tipo de dependência que ninguém quer descobrir quebrada
+na hora em que precisa rodar.
 
 ## Consequências
-No ZIP do projeto, o CSV entra COMPRIMIDO pelo próprio ZIP (~9 MB) — cabe com
-folga; `scripts/package_zip.sh` confere o tamanho final e falha se
-passar de 25 MB.
+
+- **Clone-and-run real**: a demo funciona no primeiro comando após o clone, em
+  qualquer máquina com Docker.
+- **ZIP dentro do limite**: no pacote do projeto o CSV entra comprimido pelo
+  próprio ZIP (~9 MB; pacote total ~8,5 MB), com folga sob os 25 MB — e o
+  `scripts/package_zip.sh` confere o tamanho e **falha** se estourar, para o
+  limite nunca ser descoberto pelo servidor de e-mail.
+- O repositório carrega ~31 MB a mais — custo aceito conscientemente em troca
+  da reprodutibilidade imediata.
