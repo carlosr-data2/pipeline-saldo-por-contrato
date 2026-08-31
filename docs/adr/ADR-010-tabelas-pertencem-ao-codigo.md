@@ -1,25 +1,54 @@
 # ADR-010 — Terraform provisiona a plataforma; as tabelas pertencem ao código
 
-## Contexto
-O Terraform cobre 100% da arquitetura AWS (S3+lifecycle, databases do Catalog,
-jobs Glue, Step Functions, EventBridge+DLQ, SNS, alarmes, IAM, budget). Faltava
-decidir quem é dono das TABELAS Iceberg.
+## Contexto: até onde vai o "tudo como código"?
+
+O Terraform deste projeto cobre 100% da arquitetura AWS — S3 com lifecycle,
+databases do Glue Data Catalog, os 3 jobs, Step Functions, EventBridge, SNS,
+alarmes, IAM, budget. Diante disso, a pergunta natural: *por que as tabelas
+Iceberg não estão lá também?* Afinal, "infraestrutura como código" não deveria
+incluir tudo?
+
+A resposta exige separar duas coisas que parecem iguais mas têm **ciclos de vida
+diferentes**: a *plataforma* (buckets, jobs, permissões — muda quando a
+arquitetura muda) e o *schema dos dados* (colunas, tipos, partições — muda
+quando o contrato de dados evolui). Misturar os dois amarra dois ritmos de
+mudança que não têm nada a ver um com o outro.
 
 ## Decisão
-As tabelas são criadas e evoluídas **pelo pipeline** (`CREATE TABLE IF NOT EXISTS`
-em `lib/session.garantir_tabela`), não pelo Terraform. A infra é dona de
-databases, jobs, permissões e políticas de ciclo de vida; o código é dono de
-schema, particionamento e propriedades de tabela.
 
-## Alternativas rejeitadas
-- **Tabelas como recursos Terraform (`aws_glue_catalog_table`)**: todo schema
-  evolution viraria um `terraform apply` acoplado ao deploy de infra; o estado do
-  Terraform derivaria do metadado do Iceberg (que muda a cada commit de dados) —
-  drift permanente. E o recurso do provider não fala Iceberg de verdade (metadado
-  do Iceberg fica em arquivos, não no shape do recurso).
+- **Terraform é dono da plataforma**: databases do Catalog, jobs, orquestração,
+  permissões, políticas de ciclo de vida do storage.
+- **O código do pipeline é dono das tabelas**: cada job garante o que precisa
+  com `CREATE TABLE IF NOT EXISTS` (função `garantir_tabela` em
+  `lib/session.py`), com schema, particionamento e propriedades (`format-version=3`)
+  declarados **onde o schema do contrato já vive** — em `lib/schema.py`,
+  versionado, revisado em PR e coberto por teste.
+
+## Alternativa rejeitada
+
+**Tabelas como recursos Terraform (`aws_glue_catalog_table`).** Três problemas
+práticos:
+
+1. **Todo schema evolution viraria um `terraform apply`** — adicionar uma coluna
+   ao contrato exigiria um deploy de *infraestrutura*, acoplando o ciclo de dados
+   ao ciclo de infra;
+2. **Drift permanente**: o metadado de uma tabela Iceberg muda a cada commit de
+   dados (snapshots, manifestos, estatísticas). O estado do Terraform ficaria
+   eternamente divergente da realidade, e cada `plan` acusaria mudanças que
+   ninguém fez;
+3. **O recurso do provider não fala Iceberg de verdade** — o metadado real do
+   Iceberg vive em arquivos no S3, não no shape do recurso do Catalog; o
+   Terraform enxergaria só uma casca.
 
 ## Consequências
-- O mesmo código cria as tabelas no HadoopCatalog local e no Glue Catalog — é o
-  que faz a demo local ser fiel à AWS (P4.5).
-- Governança de schema fica onde há revisão de código e testes — o schema do
-  contrato está em `lib/schema.py`, versionado e testado.
+
+- É essa separação que faz a **trilha local ser fiel à AWS** (P4.5): o mesmo
+  `garantir_tabela` cria as tabelas no HadoopCatalog do filesystem e no Glue
+  Data Catalog — se as tabelas fossem Terraform, a demo local precisaria de um
+  caminho de criação paralelo, e a paridade morreria.
+- A governança de schema fica onde há revisão de código e teste — que é onde
+  decisões de schema deveriam ser discutidas.
+- O custo assumido: o primeiro run de cada job carrega a responsabilidade de
+  criar suas tabelas (por isso o `IF NOT EXISTS` idempotente), e a documentação
+  de "quais tabelas existem" vive no código e no `docs/arquitetura.md`, não no
+  plan do Terraform.
