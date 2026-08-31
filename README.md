@@ -33,6 +33,8 @@ flowchart LR
 - Detalhes, leitura do SLA e dimensionamento para ~300M transações/dia:
   [`docs/arquitetura.md`](docs/arquitetura.md). Decisões com alternativas
   rejeitadas: [`docs/adr/`](docs/adr/).
+- **Rastreabilidade requisito ⇄ código**, com o "como verificar" de cada item:
+  [`docs/rastreabilidade.md`](docs/rastreabilidade.md).
 
 ## Trilha local (Docker) — demo em um comando
 
