@@ -1,35 +1,87 @@
 # ADR-009 — Gate de fechamento: o que bloqueia vs. o que segue com quarentena
 
-## Contexto
-Qualidade em contexto regulatório tem dois erros possíveis: fechar com dado ruim
-(multa/auditoria) e não fechar por preciosismo (perder as 06:00). O gate torna o
-critério EXPLÍCITO em vez de deixá-lo implícito no código.
+## Contexto: os dois erros possíveis de um controle de qualidade
+
+Qualidade de dados em contexto regulatório é um trade-off entre dois erros de
+naturezas opostas:
+
+- **Fechar com dado ruim** — o balanço consolida lixo; o custo aparece depois,
+  em auditoria, multa e retrabalho de republicação;
+- **Não fechar por preciosismo** — qualquer violação trava o pipeline; com ~8%
+  de quarentena típica (o normal deste dataset), o fechamento simplesmente nunca
+  aconteceria, e a área de qualidade viraria um bloqueio permanente do próprio
+  negócio.
+
+A maioria dos pipelines resolve esse trade-off *implicitamente*, espalhado em
+ifs pelo código. A decisão aqui foi torná-lo **explícito, configurável e
+testável**: um gate com critérios nomeados, que qualquer pessoa — engenheiro,
+contador, auditor — consegue ler e discutir.
 
 ## Decisão
-Nunca descarte silencioso: toda violação vai à quarentena **com motivos** (array).
-O fechamento é BLOQUEADO (job falha → Step Functions para → SNS) quando:
-1. **Falha estrutural**: arquivo ilegível, schema divergente do contrato, partição
-   vazia — erro imediato, nada publicado.
-2. **Taxa de quarentena da partição > limiar** (default 10%, configurável): acima
-   disso o lote está doente demais para fechar; o Silver, a quarentena e o
-   relatório DQ são publicados MESMO com gate reprovado (diagnóstico primeiro,
-   bloqueio depois — quem opera precisa ver o porquê), mas o Gold nunca roda.
-3. **Reconciliação cruzada divergente** (no Gold): o líquido somado por agência
-   deve bater com o movimento somado por contrato — duas rotas de agregação
-   independentes sobre o mesmo Silver. Divergindo acima da tolerância (US$ 0,01),
-   nada é publicado.
-O que viola regra mas fica abaixo do limiar: segue para quarentena + relatório,
-e o fechamento acontece — com o número exposto, não escondido.
+
+Ponto de partida inegociável: **nenhuma violação é descartada em silêncio**.
+Toda linha reprovada vai para `silver.quarentena` com um *array* de motivos
+(uma linha pode violar mais de uma regra), e as contagens por motivo são
+publicadas como tabela (`silver.dq_relatorio`) — métrica como dado, não como log.
+
+Sobre essa base, o gate define **três condições de bloqueio**, em ordem de
+severidade:
+
+1. **Falha estrutural → erro imediato, nada publicado.** Arquivo ilegível,
+   schema divergente do contrato, partição vazia. Não há o que "seguir com
+   ressalva": sem estrutura não há lote.
+2. **Taxa de quarentena da partição acima do limiar → publica o diagnóstico,
+   bloqueia o fechamento.** O limiar é parâmetro
+   (`SALDO_GATE_MAX_QUARENTENA_PCT`, default 10%). A ordem das operações é
+   deliberada e importa: o Silver, a quarentena e o relatório são gravados
+   **antes** do gate decidir — só então, se a taxa estourar, o job falha e o
+   Gold nunca roda. Racional: quem for acordado às 3h da manhã precisa encontrar
+   o *diagnóstico pronto* (quantas violações, de que tipo, quais registros), não
+   um pipeline que falhou sem deixar rastro. Diagnóstico primeiro, bloqueio
+   depois.
+3. **Reconciliação cruzada divergente (no Gold) → nada é publicado.** Antes de
+   gravar qualquer saída, o job compara duas rotas de agregação independentes
+   sobre o mesmo Silver: o líquido somado por agência deve bater com o movimento
+   somado por contrato. Divergência acima da tolerância (US$ 0,01) aborta o job
+   **antes** de qualquer escrita — aqui, ao contrário do Silver, não existe
+   "publicar o diagnóstico", porque um saldo errado publicado é exatamente o
+   dano que se quer evitar.
+
+E o que viola regra mas fica **abaixo do limiar**? Segue: quarentena + relatório
++ fechamento normal — com o número exposto, nunca escondido. A decisão de
+conviver com 8% de quarentena (ou de apertar o limiar) é do negócio, e o desenho
+entrega a ela o instrumento: um parâmetro e um relatório de tendência.
 
 ## Alternativas rejeitadas
-- **Bloquear em qualquer violação**: com 8% de quarentena típica neste dataset, o
-  fechamento nunca sairia; qualidade vira DoS contra o próprio negócio.
-- **Nunca bloquear (só relatar)**: taxa de 60% passaria batida às 06:00 — o
-  balanço fecharia com metade do movimento. Inaceitável.
-- **Limiar fixo em código**: o número certo é decisão do negócio, que muda; por
-  isso é parâmetro (`SALDO_GATE_MAX_QUARENTENA_PCT`) com default conservador.
+
+**1. Bloquear em qualquer violação (tolerância zero).** Com a taxa típica deste
+dataset (~8%), o fechamento nunca sairia. Qualidade com tolerância zero em dado
+que chega sujo não protege o negócio — nega o serviço a ele.
+
+**2. Nunca bloquear (só relatar).** O simétrico oposto: um lote com 60% de
+quarentena (cenário coberto por teste) passaria batido e o balanço fecharia com
+quase metade do movimento faltando. Relatório sem freio é aviso de incêndio sem
+porta de emergência.
+
+**3. Limiar fixo em código (hard-coded).** O número certo — 5%? 10%? 15%? — é
+uma decisão do negócio que muda com o tempo e com a maturidade do upstream. Por
+isso é parâmetro com default conservador, não constante.
 
 ## Consequências
-O dataset do desafio tem ~8% de quarentena → o gate aprova com o default e o
-mecanismo de bloqueio é provado por teste automatizado (limiar artificialmente
-baixo → `GateReprovado`, Gold não roda).
+
+- **Com o dataset do desafio, o gate aprova**: taxas de 8,07% / 8,08% / 7,93%
+  nos três dias, contra o limiar de 10% — e o log registra `gate_aprovado` por
+  partição, com a decomposição por motivo.
+- **O mecanismo de bloqueio é provado por teste**, não prometido: um teste roda o
+  Silver com limiar artificialmente baixo e exige `GateReprovado` — verificando
+  também que o diagnóstico (quarentena + relatório) foi publicado antes do
+  bloqueio.
+- **O caminho da falha está integrado à operação**: gate reprovado → job Glue
+  falha → Step Function para (o Gold nunca inicia) → e-mail via SNS. A retomada
+  após correção do upstream é o redrive; e se alguém tentar pular o dia
+  reprovado, a guarda de continuidade do Gold (ADR-005) recusa — as camadas de
+  proteção se encaixam.
+- **Um efeito colateral desejável**: o limiar configurável cria a conversa certa
+  com o negócio. "Estamos fechando com 8% de quarentena todo dia" deixa de ser
+  um segredo do pipeline e vira uma linha de relatório que alguém precisa
+  assinar.
