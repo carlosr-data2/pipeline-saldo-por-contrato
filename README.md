@@ -72,7 +72,8 @@ Toda a arquitetura é provisionada por IaC — S3 com retenção 5y hot/10y cold
 Glue Data Catalog e 3 jobs, Step Functions, EventBridge Scheduler com DLQ, SNS,
 alarmes-sentinela, IAM de menor privilégio e budget de US$ 10. Passo a passo,
 **estimativa de custo antes de cada execução** e checklist de evidências:
-[`docs/runbook_aws.md`](docs/runbook_aws.md).
+[`docs/runbook_aws.md`](docs/runbook_aws.md). A execução real na conta AWS está
+documentada, com capturas, em [`docs/evidencias.md`](docs/evidencias.md).
 
 ```bash
 cd terraform && terraform init && terraform apply
