@@ -7,7 +7,7 @@ criada por `terraform apply` (35 recursos), sem passo manual de console.
 
 Custo do exercício: estimado **antes** da execução em ~US$ 0,14 por execução do
 pipeline (~US$ 0,42 pelos 3 dias, < US$ 1 no total — fórmula e premissas no
-runbook, seção 2); o custo medido no Cost Explorer entra na evidência 10.
+runbook, seção 2); a medição por DPU-hours dos runs está na evidência 10.
 
 ## 1. Infraestrutura completa por IaC
 
@@ -92,7 +92,10 @@ da SFN com backoff, um `ConcurrentRunsExceededException` transitório absorvido
 
 Lista de execuções da state machine: dias 20, 21 e 22 SUCCEEDED, em ordem —
 obrigatória porque o saldo é incremental (o Gold do dia D parte do snapshot de
-D−1; a guarda de continuidade recusa pular dia publicado sem snapshot).
+D−1; a guarda de continuidade recusa pular dia publicado sem snapshot). A
+execução FAILED do dia 25 é a falha demonstrada de propósito da evidência 9:
+uma data sem lote, que o Silver rejeita com "partição vazia no Bronze" — sem
+publicar nada e sem afetar os dias fechados.
 
 ## 6. Histórico de runs no Glue com DPU-hours
 
@@ -148,14 +151,29 @@ prática para "como você sabe que o resultado na AWS está certo?".
 
 ![sns](evidencias/09-email-sns-falha.png)
 
-E-mail recebido quando a execução do incidente da evidência 3 falhou:
-regra EventBridge (status FAILED/TIMED_OUT/ABORTED) → SNS. Não foi um teste
-sintético — foi o caminho de erro operando durante um incidente real.
+E-mail recebido na falha demonstrada do dia 25 (data sem lote): a execução
+falha no Silver com a validação de partição vazia, a regra EventBridge (status
+FAILED/TIMED_OUT/ABORTED) publica no SNS e o alerta chega na caixa de entrada.
+Uma lição operacional real ficou registrada no caminho: a inscrição de e-mail
+do SNS exige confirmação do destinatário — enquanto ela estava pendente, o
+alerta do incidente da evidência 3 não foi entregue. Infra provisionada não é
+infra operante; por isso "confirmar o SNS" é passo explícito do runbook, e os
+alarmes-sentinela cobrem o mesmo risco por outro ângulo (a ausência de sucesso
+vira alarme no console mesmo sem e-mail).
 
-## 10. Custo medido (Cost Explorer)
+## 10. Custo: estimado antes, medido depois
 
-![custo](evidencias/10-cost-explorer.png)
+A estimativa feita **antes** de executar (runbook, seção 2): ~US$ 0,05 por job,
+~US$ 0,14 por execução do pipeline, < US$ 1 no exercício completo.
 
-Custo real do exercício no Cost Explorer (filtro por serviço Glue + tag
-`projeto`), comparado com a estimativa feita antes de executar. Disciplina de
-FinOps: estimar antes, medir depois.
+A medição vem dos próprios runs: o Glue fatura por **DPU-hour** e reporta o
+consumo de cada run (coluna DPU hours da evidência 6; ex.: o run do Bronze
+consumiu ~179 DPU-segundos ≈ 0,05 DPU-h ≈ US$ 0,02). Somando os runs dos três
+dias mais a falha demonstrada, o exercício fica na casa dos **centavos**,
+confirmando a ordem de grandeza estimada.
+
+O Cost Explorer consolida os números em D+1 — depois da data deste envio; o
+painel (filtro por serviço Glue + tag `projeto`, que os recursos carregam via
+`default_tags` do Terraform) fica como conferência posterior. Os guarda-corpos
+que limitam o pior caso ficam provisionados: budget de US$ 10 com alertas em
+80%/100% (ACTUAL e FORECASTED), timeout de 15 min por job e concorrência 1.
