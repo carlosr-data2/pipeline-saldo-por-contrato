@@ -62,7 +62,7 @@ existe por causa de um requisito.
 | Item do enunciado | Onde é tratado | Como verificar |
 |---|---|---|
 | "Formato de entrega: arquivo ZIP" | `scripts/package_zip.sh` (git archive; confere limite de anexo de e-mail) | `./scripts/package_zip.sh` |
-| "Demonstrar execução do pipeline (local com docker ou em conta AWS)" | as duas trilhas: `make demo` (Docker, 1 comando, sem AWS) e `terraform/` + `docs/runbook_aws.md` (com estimativa de custo prévia) | executar `make demo` |
+| "Demonstrar execução do pipeline (local com docker ou em conta AWS)" | as duas trilhas: `make demo` (Docker, 1 comando, sem AWS) e `terraform/` + `docs/runbook_aws.md` (com estimativa de custo prévia); execução real na conta AWS documentada em `docs/evidencias.md` | executar `make demo`; capturas em `docs/evidencias/` |
 | "Saber explicar em detalhes cada decisão arquitetural" / "Justificar os trade-offs" / "propor alternativas" | 13 ADRs, todos com decisão, alternativa rejeitada e critério | `docs/adr/` |
 
 ### §6 — Conjuntos de Dados Disponibilizados
