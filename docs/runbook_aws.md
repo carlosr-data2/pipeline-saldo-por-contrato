@@ -16,7 +16,7 @@ não depende de nada disto; esta trilha é a prova na plataforma real.
 cd terraform
 cp terraform.tfvars.example terraform.tfvars   # editar email_alertas
 terraform init
-terraform plan    # conferir: ~30 recursos, nada fora do prefixo saldo-contrato-*
+terraform plan    # conferir: 35 recursos, nada fora do prefixo saldo-contrato-*
 terraform apply
 ```
 
@@ -71,7 +71,8 @@ reprocessamento).
 
 *Nota Athena: o suporte de leitura a Iceberg **V3** no Athena é recente/parcial;
 se a query reclamar de `format-version`, a evidência do catálogo é o console do
-Glue Data Catalog + um job Spark de consulta.
+Glue Data Catalog + um job Spark de consulta (o cenário de compatibilidade de
+leitura previsto no ADR-004).
 
 ## 5. Demonstrações de robustez (opcionais)
 
