@@ -203,3 +203,30 @@ o requisito "todo o dado deve ser escrito com Apache Iceberg V3" conferido na
 fonte, não presumido. Só é possível porque o runtime 1.10.2 entra por
 `--extra-jars` no lugar do Iceberg 1.7.x nativo do Glue 5.0 (evidências 2d/2e,
 ADR-004).
+
+## 13. DLQ do disparo testada de propósito
+
+A DLQ existe para o cenário que nunca deveria acontecer: o Scheduler não
+conseguir sequer iniciar a Step Function (ADR-003). Como caminho que nunca
+dispara é caminho não testado, o teste foi provocado após a entrega: um Deny
+temporário de `states:StartExecution` na role do agendador + um agendamento
+descartável — a invocação falhou e o evento caiu na fila.
+
+![mensagem na dlq](evidencias/13-dlq-mensagem-erro.png)
+
+A mensagem retida é um registro forense completo, gravado pelo próprio
+Scheduler: `ERROR_CODE: AccessDeniedException`; `ERROR_MESSAGE` apontando a
+causa raiz exata (a role sem permissão de `StartExecution`, "with an explicit
+deny in an identity-based policy"); `EXHAUSTED_RETRY_CONDITION` confirmando que
+as retentativas se esgotaram antes do depósito; e `SCHEDULED_TIME` +
+`TARGET_ARN` + o payload original — tudo que o operador precisa para corrigir a
+causa e disparar o replay manual. Sem a DLQ, esse disparo teria evaporado em
+silêncio; quem pegaria o caso, com menos contexto e mais tarde, seria o
+alarme-sentinela de ausência.
+
+![alarme da dlq](evidencias/13b-dlq-alarme.png)
+
+O alarme `disparo-na-dlq` (mensagens visíveis ≥ 1) disparou e o alerta chegou
+por e-mail via SNS. Após o teste: Deny removido, fila purgada, agendamento
+descartável auto-removido — ambiente de volta ao estado provisionado pelo
+Terraform.
