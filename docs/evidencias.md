@@ -103,12 +103,18 @@ Runs por job com duração e DPU-hours medidos — o insumo real da conta de cus
 
 ## 7. Glue Data Catalog: databases e tabelas Iceberg
 
-![catalog](evidencias/07-data-catalog-tabelas.png)
+![catalog databases](evidencias/07-data-catalog-databases.png)
 
-Databases `bronze`, `silver`, `gold` e `ref` (criados pelo Terraform) com as 9
-tabelas Iceberg criadas pelos próprios jobs (`CREATE TABLE IF NOT EXISTS`,
-ADR-010). É o mesmo código que na trilha local cria as tabelas no HadoopCatalog:
-catálogo por configuração (ADR-012), atendendo "utilizar Glue Data Catalog para
+Os 4 databases `bronze`, `silver`, `gold` e `ref`, criados pelo Terraform no
+`apply` (mesmo timestamp dos jobs).
+
+![tabelas gold](evidencias/07b-data-catalog-tabelas-gold.png)
+
+Dentro do `gold`, as 4 tabelas criadas pelos próprios jobs
+(`CREATE TABLE IF NOT EXISTS`): a divisão deliberada do ADR-010 — a plataforma
+(databases) pertence à infra, o schema (tabelas) pertence ao código. É o mesmo
+código que na trilha local cria as tabelas no HadoopCatalog: catálogo por
+configuração (ADR-012), atendendo "utilizar Glue Data Catalog para
 gerenciamento de metadados".
 
 ## 8. Logging estruturado no CloudWatch
