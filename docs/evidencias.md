@@ -124,8 +124,25 @@ gerenciamento de metadados".
 Linha JSON `"evento": "qualidade_particao"` no CloudWatch Logs, com contagens
 por motivo, taxa de quarentena e limiar — consultável no Logs Insights sem
 regex (`filter evento="gate_reprovado"`). Atende "tratamento de erros e logging
-estruturado". As contagens batem com a execução local e com o oráculo
-independente: mesma engine, mesmo código, mesmos números.
+estruturado".
+
+![snapshot base](evidencias/08b-cloudwatch-snapshot-base.png)
+
+Log do Gold do dia 21: o evento `snapshot_base` com
+`"snapshot_anterior": "2026-08-20"` é o **saldo incremental operando na nuvem**
+(ADR-005) — a foto de um dia servindo de base para o próximo; e a
+`reconciliacao_cruzada` com `divergencia: 0.0` é o controle de consistência
+batendo ao centavo antes de qualquer publicação (ADR-009).
+
+![paridade](evidencias/08c-cloudwatch-gold-concluido-paridade.png)
+
+O `gold_concluido` do dia 22 fecha a **paridade local × nuvem**:
+`contratos_no_snapshot: 95200`, `saldo_total: -83299995.14` e
+`lancamentos_dia: 61382` — idênticos, ao centavo, aos da trilha local em Docker
+e aos recalculados pelo oráculo independente em Python puro (dia 21 conferido
+também: 70.545 contratos, divergência 0.0). Mesmo código e mesmo motor pinado
+nas duas trilhas (Spark 3.5 + Iceberg 1.10.2), mesmos números — é a resposta
+prática para "como você sabe que o resultado na AWS está certo?".
 
 ## 9. Alerta de falha por e-mail (SNS)
 
