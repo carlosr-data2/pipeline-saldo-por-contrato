@@ -25,14 +25,38 @@ inteiro nasce de um comando, reproduzível em qualquer conta.
 `saldo-contrato-bronze_ingest`, `silver_quality` e `gold_saldo`, Glue 5.0,
 criados no mesmo instante pelo mesmo `terraform apply`.
 
-![job detalhes](evidencias/02b-glue-job-detalhes.png)
+Detalhe da configuração, capturado no bronze — os três jobs compartilham a
+mesma configuração, definida uma única vez no Terraform (`glue.tf` e
+`variables.tf`, com cada valor justificado em comentário):
 
-Detalhe da configuração (capturado no bronze; os três jobs compartilham a mesma
-configuração, definida uma única vez no Terraform): **G.1X × 2 workers, timeout
-15 min, MaxRetries=0** — o retry pertence só à Step Function (ADR-002), e o
-`MaxConcurrentRuns=1` é o cinto de segurança da idempotência. Atende
-"configuração adequada de workers, timeout e retries", com cada valor
-justificado em comentário no `terraform/glue.tf`.
+![workers](evidencias/02b-glue-job-workers.png)
+
+**Worker type G.1X** (4 vCPU / 16 GB) × **2 workers**, Glue 5.0, Python 3 —
+o dimensionamento da prova de conceito (o de produção, 20×G.2X para 300M/dia,
+está em `docs/arquitetura.md`). Atende "configuração adequada de workers".
+
+![timeout e retries](evidencias/02c-glue-job-timeout-retries.png)
+
+**Number of retries 0**, **timeout 15 min** e **Maximum concurrency 1**: o
+retry pertence só à Step Function (ADR-002); o timeout menor que o SLA faz o
+job falhar rápido em vez de estourar a janela; a concorrência 1 é o cinto de
+segurança da idempotência contra disparo duplo.
+
+![jars Iceberg](evidencias/02d-glue-job-jars-iceberg.png)
+
+As bibliotecas do job: `src.zip` (o código de `src/lib`) e os **jars
+`iceberg-spark-runtime-3.5_2.12-1.10.2` + `iceberg-aws-bundle`** — o Glue 5.0
+embarca Iceberg 1.7.x, que não escreve V3; o runtime 1.10.2 entra por
+`--extra-jars`, a mesma versão pinada na trilha local (ADR-004).
+
+![parâmetros](evidencias/02e-glue-job-parametros.png)
+
+Os parâmetros do job: `--datalake-formats` **vazio** e `--user-jars-first true`
+(sem isso o Iceberg nativo do Glue subiria junto e conflitaria com o 1.10.2), e
+os `--SALDO_*` que configuram catálogo/warehouse — o mesmo código dos jobs roda
+local e na nuvem trocando só estes valores (ADR-012). As tags
+`gerenciado=terraform` e `projeto=saldo-contrato` marcam a origem IaC e
+habilitam o filtro de custo no Cost Explorer.
 
 ## 3. Execução do dia 2026-08-20 — com falha real e retomada por redrive
 
