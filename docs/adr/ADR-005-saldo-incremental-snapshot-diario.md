@@ -5,8 +5,8 @@
 O produto final do pipeline é o saldo consolidado diário por contrato: em
 produção, ~300 milhões de contratos, com 5 anos de histórico regulatório.
 
-A forma ingênua de calcular saldo é somar todas as transações do contrato desde
-o início. Com 5 anos de retenção, isso significa varrer ~550 **bilhões** de
+A forma mais óbvia de calcular saldo é somar todas as transações do contrato
+desde o início. Com 5 anos de retenção, isso significa varrer ~550 **bilhões** de
 linhas *todos os dias*, e o custo cresce sem teto conforme o histórico cresce.
 Nenhum SLA de 1 hora sobrevive a isso. Antes de discutir cluster, worker ou
 otimização, é o **algoritmo** que precisa mudar: o trabalho diário tem que ser
