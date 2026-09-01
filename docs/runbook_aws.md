@@ -1,8 +1,8 @@
-# Runbook — Trilha AWS (evidências para a defesa)
+# Runbook — Trilha AWS (execução e evidências)
 
 A trilha AWS prova a arquitetura na conta real: jobs no Glue, tabelas no Data Catalog,
-orquestração na Step Function e **custo medido**. A demo ao vivo NÃO depende disto —
-o plano A é `make demo` (local). Isto aqui é evidência e bônus.
+orquestração na Step Function e **custo medido**. A demonstração local (`make demo`)
+não depende de nada disto; esta trilha é a prova na plataforma real.
 
 ## 0. Pré-requisitos
 
@@ -58,7 +58,7 @@ O agendamento real (22:05 America/Sao_Paulo) fica provisionado e resolve o `dt`
 sozinho — a execução manual acima é o replay parametrizado (mesmo mecanismo do
 reprocessamento).
 
-## 4. Checklist de evidências (capturar para a apresentação)
+## 4. Checklist de evidências
 
 1. **Step Functions**: grafo da execução verde (Bronze → Silver → Gold) + duração.
 2. **Glue console → Jobs → Runs**: histórico com worker type, DPU-hours e logs.
@@ -74,7 +74,7 @@ se a query reclamar de `format-version`, a evidência do catálogo é o console 
 Glue Data Catalog + um job Spark de consulta (o cenário de compatibilidade de
 leitura previsto no ADR-004).
 
-## 5. Demonstrações de robustez (opcionais, rendem na defesa)
+## 5. Demonstrações de robustez (opcionais)
 
 - **Idempotência**: reexecutar o dia 2026-08-21 e mostrar que as contagens
   do Gold não mudam (INSERT OVERWRITE dinâmico da partição).
