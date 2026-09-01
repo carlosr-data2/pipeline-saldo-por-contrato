@@ -9,7 +9,6 @@ Para a partição do dia:
      e o fechamento não acontece com dado ruim (Step Functions para no erro).
 """
 import argparse
-import sys
 from datetime import date, timedelta
 
 from pyspark.sql import functions as F
@@ -165,4 +164,6 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Sem sys.exit: o Glue executa o script dentro do driver e trata SystemExit
+    # (mesmo com código 0) como job FAILED. Exceção real já encerra com código != 0.
+    main()

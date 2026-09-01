@@ -6,7 +6,6 @@ INSERT OVERWRITE dinâmico de partição — reprocessar o mesmo arquivo é idem
 Também materializa o referencial COSIF (ref.cosif_dominio).
 """
 import argparse
-import sys
 
 from pyspark.sql import functions as F
 
@@ -77,4 +76,6 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Sem sys.exit: o Glue executa o script dentro do driver e trata SystemExit
+    # (mesmo com código 0) como job FAILED. Exceção real já encerra com código != 0.
+    main()
