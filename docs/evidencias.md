@@ -23,8 +23,16 @@ inteiro nasce de um comando, reproduzível em qualquer conta.
 ![jobs](evidencias/02-glue-jobs.png)
 
 `saldo-contrato-bronze_ingest`, `silver_quality` e `gold_saldo`, Glue 5.0,
-G.1X × 2 workers, timeout 15 min, `MaxRetries=0` (o retry é da Step Function,
-ADR-002).
+criados no mesmo instante pelo mesmo `terraform apply`.
+
+![job detalhes](evidencias/02b-glue-job-detalhes.png)
+
+Detalhe da configuração (capturado no bronze; os três jobs compartilham a mesma
+configuração, definida uma única vez no Terraform): **G.1X × 2 workers, timeout
+15 min, MaxRetries=0** — o retry pertence só à Step Function (ADR-002), e o
+`MaxConcurrentRuns=1` é o cinto de segurança da idempotência. Atende
+"configuração adequada de workers, timeout e retries", com cada valor
+justificado em comentário no `terraform/glue.tf`.
 
 ## 3. Execução do dia 2026-08-20 — com falha real e retomada por redrive
 
