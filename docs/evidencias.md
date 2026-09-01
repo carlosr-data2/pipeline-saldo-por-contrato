@@ -177,3 +177,29 @@ painel (filtro por serviço Glue + tag `projeto`, que os recursos carregam via
 `default_tags` do Terraform) fica como conferência posterior. Os guarda-corpos
 que limitam o pior caso ficam provisionados: budget de US$ 10 com alertas em
 80%/100% (ACTUAL e FORECASTED), timeout de 15 min por job e concorrência 1.
+
+## 11. Idempotência demonstrada na nuvem
+
+![idempotencia](evidencias/11-idempotencia-dia21.png)
+
+O dia 2026-08-21 foi reexecutado horas depois do fechamento original, já com o
+dia 22 publicado. O `gold_concluido` da reexecução é idêntico ao da primeira
+passada, campo a campo: 61.281 lançamentos, 70.545 contratos no snapshot, saldo
+total de −55.862.291,01 — e a reconciliação cruzada no mesmo centavo
+(−27.828.114,23 pelas duas rotas de agregação). Reprocessar uma partição é
+reescrevê-la por INSERT OVERWRITE dinâmico (ADR-005): rodar duas vezes produz o
+mesmo estado, sem duplicar nada e sem tocar os demais dias. Atende "considerar
+estratégias de re-processamento (idempotência)" com prova em conta real.
+
+## 12. Iceberg V3 verificado na conta real
+
+![v3 na aws](evidencias/12-iceberg-v3-aws.png)
+
+Para cada uma das 9 tabelas, o `metadata_location` registrado no Glue Data
+Catalog aponta o `metadata.json` corrente no S3 — e todos os nove trazem
+`"format-version": 3`. É a mesma verificação que o relatório da demo local faz
+(e que um teste automatizado exige), agora sobre as tabelas escritas pelo Glue:
+o requisito "todo o dado deve ser escrito com Apache Iceberg V3" conferido na
+fonte, não presumido. Só é possível porque o runtime 1.10.2 entra por
+`--extra-jars` no lugar do Iceberg 1.7.x nativo do Glue 5.0 (evidências 2d/2e,
+ADR-004).
