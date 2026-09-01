@@ -139,7 +139,7 @@ def test_reprocessamento_e_idempotente(spark, cfg, csvs):
         "quarentena": estado(cfg.tb_quarentena, "dt_processamento", "2026-08-21"),
         "saldo": estado(cfg.tb_saldo_contrato, "dt_referencia", "2026-08-21"),
     }
-    # reexecução do MESMO dia (P4.1): overwrite dinâmico da partição, sem duplicar
+    # reexecução do MESMO dia: overwrite dinâmico da partição, sem duplicar
     silver(spark, cfg, LOG, "2026-08-21")
     gold(spark, cfg, LOG, "2026-08-21")
     depois = {

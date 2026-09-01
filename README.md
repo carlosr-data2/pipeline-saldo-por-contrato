@@ -1,5 +1,7 @@
 # Pipeline de Saldo por Contrato
 
+[![ci](https://github.com/carlosr-data2/pipeline-saldo-por-contrato/actions/workflows/ci.yml/badge.svg)](https://github.com/carlosr-data2/pipeline-saldo-por-contrato/actions/workflows/ci.yml)
+
 Pipeline batch de contabilidade regulatória: cálculo diário do **saldo consolidado
 por contrato e por conta**, com **classificação COSIF** e **reconciliação
 débito × crédito por agência** — Apache Spark (PySpark) + Apache **Iceberg V3**,

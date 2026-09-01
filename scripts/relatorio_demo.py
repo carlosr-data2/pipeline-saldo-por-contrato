@@ -1,7 +1,7 @@
 """Relatório da demonstração: estado final das tabelas das três camadas.
 
 Também prova, lendo o metadata.json de cada tabela, que TODO o dado foi escrito
-em Apache Iceberg V3 (requisito do desafio, pergunta P1.3 da defesa).
+em Apache Iceberg V3 (requisito do desafio).
 """
 import glob
 import json

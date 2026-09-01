@@ -16,7 +16,7 @@ o plano A é `make demo` (local). Isto aqui é evidência e bônus.
 cd terraform
 cp terraform.tfvars.example terraform.tfvars   # editar email_alertas
 terraform init
-terraform plan    # conferir: ~30 recursos, nada fora do prefixo saldo-contrato-*
+terraform plan    # conferir: 35 recursos, nada fora do prefixo saldo-contrato-*
 terraform apply
 ```
 
@@ -71,13 +71,14 @@ reprocessamento).
 
 *Nota Athena: o suporte de leitura a Iceberg **V3** no Athena é recente/parcial;
 se a query reclamar de `format-version`, a evidência do catálogo é o console do
-Glue Data Catalog + um job Spark de consulta (é exatamente o ponto da P1.3).
+Glue Data Catalog + um job Spark de consulta (o cenário de compatibilidade de
+leitura previsto no ADR-004).
 
 ## 5. Demonstrações de robustez (opcionais, rendem na defesa)
 
-- **Idempotência (P4.1)**: reexecutar o dia 2026-08-21 e mostrar que as contagens
+- **Idempotência**: reexecutar o dia 2026-08-21 e mostrar que as contagens
   do Gold não mudam (INSERT OVERWRITE dinâmico da partição).
-- **Falha + redrive (P4.3)**: renomear temporariamente o CSV no S3 → execução
+- **Falha + redrive**: renomear temporariamente o CSV no S3 → execução
   falha no Bronze → e-mail do SNS chega → restaurar o arquivo → **Redrive** no
   console retoma do estado que falhou, sem reprocessar o que já passou.
 

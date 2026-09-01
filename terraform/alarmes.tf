@@ -1,5 +1,5 @@
 # Alarmes-sentinela: AUSÊNCIA de sinal vira alerta (cobre inclusive trigger perdido).
-# Nota honesta (defesa P4.4): alarme de métrica cobre a janela por período diário;
+# Limitação conhecida: alarme de métrica cobre a janela por período diário;
 # a checagem fina "22:15 sem execução" em produção seria um schedule + verificação
 # de 5 linhas — trade-off registrado em docs/arquitetura.md.
 

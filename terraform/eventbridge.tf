@@ -33,7 +33,7 @@ resource "aws_sqs_queue" "dlq_disparo" {
 }
 
 # Execução FAILED/TIMED_OUT/ABORTED -> e-mail. O registro durável da falha é o
-# histórico da própria Step Function (retomada via redrive — P4.3).
+# histórico da própria Step Function (retomada via redrive).
 resource "aws_cloudwatch_event_rule" "execucao_falhou" {
   name = "${var.prefixo}-execucao-falhou"
   event_pattern = jsonencode({

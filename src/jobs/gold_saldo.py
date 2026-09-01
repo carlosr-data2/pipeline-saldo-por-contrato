@@ -76,7 +76,7 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
     with log.etapa("leitura_silver", dt=dt):
         silver_dia = spark.table(cfg.tb_silver).where(F.col("dt_processamento") == F.lit(dt_ref))
         # persist: o Silver do dia alimenta 4 agregações + o controle de consistência;
-        # sem persist, cada saída reexecutaria a leitura (P3.4 — custo: memória/spill).
+        # sem persist, cada saída reexecutaria a leitura. Custo aceito: memória/spill.
         silver_dia.persist()
         total_silver = silver_dia.count()
         if total_silver == 0:
