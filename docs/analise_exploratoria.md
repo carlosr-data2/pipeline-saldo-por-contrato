@@ -31,5 +31,13 @@ para o ADR onde a decisão está fundamentada.
   contrato não o pede: virou métrica publicada e pergunta a quem é dono da
   decisão.
 
-Os números por motivo são recomputáveis a qualquer momento: ficam publicados
-na tabela `silver.dq_relatorio` a cada execução do pipeline.
+Todos os números desta página são reproduzíveis em segundos, por uma contagem
+independente do pipeline (Python puro, sem Spark — no mesmo espírito do
+oráculo dos testes):
+
+```bash
+python3 scripts/analise_exploratoria.py
+```
+
+E as contagens por motivo também ficam publicadas na tabela
+`silver.dq_relatorio` a cada execução do pipeline.
