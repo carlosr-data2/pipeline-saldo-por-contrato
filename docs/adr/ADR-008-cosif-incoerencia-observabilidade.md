@@ -1,12 +1,12 @@
 # ADR-008 — Incoerência COSIF × tipo de contrato é observabilidade, não bloqueio
 
-## Contexto: quando o profiling encontra um problema que o contrato não previu
+## Contexto: quando a análise exploratória encontra um problema que o contrato não previu
 
 A regra do contrato para `cod_cosif` é uma só: **existir no domínio COSIF**. O
 pipeline a implementa e ela funciona como esperado: 3.309 registros com o
 código `9.9.9.99.9` (inexistente no referencial) vão para a quarentena.
 
-O profiling, porém, revelou algo que a regra não cobre: o referencial associa
+A análise exploratória, porém, revelou algo que a regra não cobre: o referencial associa
 cada código COSIF a um tipo de contrato (`tipo_contrato_associado`), e **83,3%
 dos registros válidos** têm um código que *existe*, mas pertence a **outro**
 tipo: lançamentos de conta corrente com COSIF de seguros, CDBs com COSIF de
