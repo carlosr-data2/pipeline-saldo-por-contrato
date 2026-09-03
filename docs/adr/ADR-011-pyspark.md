@@ -25,7 +25,7 @@ Com a performance neutralizada, os critérios que sobram apontam para Python:
 - **Manutenção**: Python é a língua franca dos times de dados; revisão de
   código, on-call e evolução ficam acessíveis ao time inteiro, não a um
   subconjunto;
-- **Ferramental do projeto**: pytest, oráculo de verificação e profiling no
+- **Ferramental do projeto**: pytest, oráculo de verificação e análise exploratória no
   mesmo ecossistema do pipeline.
 
 ## Alternativa rejeitada

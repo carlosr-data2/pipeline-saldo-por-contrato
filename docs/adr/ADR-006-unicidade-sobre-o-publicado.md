@@ -3,7 +3,7 @@
 ## Contexto: o que os dados revelaram antes de qualquer regra
 
 O contrato exige que `id_transacao` seja "único globalmente". A primeira reação
-seria um `dropDuplicates` e pronto, mas o profiling do dataset mudou o problema
+seria um `dropDuplicates` e pronto, mas a análise exploratória do dataset mudou o problema
 por completo. Dois achados:
 
 1. **Nenhuma duplicata é uma cópia idêntica.** Dos 2.736 ids duplicados, 100%
