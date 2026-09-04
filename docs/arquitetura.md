@@ -1,5 +1,18 @@
 # Arquitetura da Solução
 
+- [Arquitetura da Solução](#arquitetura-da-solução)
+  - [O problema em uma frase](#o-problema-em-uma-frase)
+  - [Visão geral](#visão-geral)
+  - [As camadas: cada uma responde uma pergunta de auditoria](#as-camadas-cada-uma-responde-uma-pergunta-de-auditoria)
+    - [Por que a partição é `dt_processamento`?](#por-que-a-partição-é-dt_processamento)
+  - [A leitura do SLA: por que "\< 1 hora" e "janela de 4 horas" não se contradizem](#a-leitura-do-sla-por-que--1-hora-e-janela-de-4-horas-não-se-contradizem)
+  - [Escala de produção: como 300M de transações/dia cabem em 1 hora](#escala-de-produção-como-300m-de-transaçõesdia-cabem-em-1-hora)
+    - [A decisão central: incremental, nunca full scan](#a-decisão-central-incremental-nunca-full-scan)
+    - [Dimensionamento proposto (ponto de partida; o número final se mede)](#dimensionamento-proposto-ponto-de-partida-o-número-final-se-mede)
+    - [As três otimizações Spark, e o limite de cada uma](#as-três-otimizações-spark-e-o-limite-de-cada-uma)
+  - [Retenção: 5 anos hot + 10 anos cold — com uma armadilha evitada](#retenção-5-anos-hot--10-anos-cold--com-uma-armadilha-evitada)
+  - [Observabilidade: cobrir também o cenário em que nada roda](#observabilidade-cobrir-também-o-cenário-em-que-nada-roda)
+
 ## O problema em uma frase
 
 Todo dia, centenas de milhões de lançamentos contábeis chegam em lote e precisam

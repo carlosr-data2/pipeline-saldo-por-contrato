@@ -4,8 +4,37 @@ O dataset foi explorado antes de qualquer linha de pipeline, e os achados
 mudaram decisões de arquitetura. Este é o resumo; cada consequência aponta
 para o ADR onde a decisão está fundamentada.
 
+- [Análise exploratória do dataset — feita antes do desenho](#análise-exploratória-do-dataset--feita-antes-do-desenho)
+  - [Achado por achado — da análise à decisão](#achado-por-achado--da-análise-à-decisão)
+  - [Achados e consequências](#achados-e-consequências)
+  - [Os termos da tabela](#os-termos-da-tabela)
+  - [A incoerência COSIF × tipo, em duas checagens](#a-incoerência-cosif--tipo-em-duas-checagens)
+  - [Os números traçados](#os-números-traçados)
+  - [Por que medir e não bloquear (a decisão, ADR-008)](#por-que-medir-e-não-bloquear-a-decisão-adr-008)
+  - [Duas leituras que a tabela sustenta](#duas-leituras-que-a-tabela-sustenta)
+
 **Base:** 199.998 registros, 3 partições diárias (2026-08-20/21/22) de
 66.666 registros cada; referencial COSIF com 8 códigos válidos.
+
+## Achado por achado — da análise à decisão
+
+1. **Duplicatas não são re-entregas → a dedup virou ADR.**
+Achado: 2.736 grupos de id_transacao duplicado e nenhum grupo com conteúdo idêntico — são payloads DIFERENTES disputando o mesmo id. Consequência: dropDuplicates() (a solução de uma linha) escolheria o vencedor por sorteio — inaceitável em contabilidade. Nasceu o ADR-006: vencedor determinístico (dt_lancamento + hash como desempate) e perdedores para a quarentena com motivo. Sem a EDA, dropDuplicates pareceria suficiente.
+
+2. **71% das duplicatas cruzam partições → nasceu o lookback.**
+Achado: 1.940 dos 2.736 grupos têm as cópias em DIAS diferentes. Consequência: dedup só dentro do lote de hoje deixa passar a maioria — o incremental diário precisa checar contra o que já foi publicado. Nasceu o anti-join contra a silver numa janela de 7 dias — e a renegociação do "único globalmente" (inviável a 300M/dia × 5 anos) para "unicidade em janela". Um número (71%) definiu um componente inteiro do silver.
+
+3. **Os volumes de violação → calibraram o gate.**
+Achados: valor≤0 (3.989), COSIF fora do domínio (3.309), data futura (3.257), conta nula (2.411) — total ~8,1% de linhas problemáticas. Consequência dupla: (a) a quarentena tinha que guardar TUDO com motivo, porque 8% de descarte silencioso é um buraco contábil; (b) o limiar do gate em 10% — o dataset real passa (8,1% < 10%), e o bloqueio se prova por teste com limiar artificial. O 10% não foi chutado; foi calibrado no dado.
+
+4. **A incoerência de 83% → virou dado, não bloqueio.**
+Achado: 83,3% dos registros válidos têm cod_cosif incoerente com o tipo_contrato. Consequência: se isso fosse regra de bloqueio, o pipeline rejeitaria o dataset quase inteiro — então claramente NÃO é violação do contrato (que só exige existir no domínio); é uma pergunta ao data owner. Nasceu o ADR-008: a flag_coerente na gold classificacao_cosif expõe a incoerência como dado consultável. A EDA impediu o erro clássico de inventar regra que o contrato não pediu — e que teria matado o pipeline.
+
+5. **Sinal não definido + 5 tipos de lançamento → a convenção do ADR-007.**
+Achado: tipo_lancamento tem 5 valores e o contrato não diz quem soma e quem subtrai — sem isso, não existe saldo. Consequência: convenção assumida e documentada (CREDITO/JUROS = +; DEBITO/TARIFA/IOF = −; estorno inverte), com oráculo independente validando. A EDA revelou que o requisito central era incompleto — antes de escrever uma linha do gold.
+
+6. **Sem saldo de abertura → o snapshot parte do vazio (ADR-005).**
+Achado: os 3 dias são só movimento; não há posição inicial. Consequência: primeiro dia parte de snapshot vazio, e é por isso que os saldos saem negativos no dataset sintético — visível em qualquer consulta à gold.
 
 ## Achados e consequências
 
@@ -20,7 +49,7 @@ para o ADR onde a decisão está fundamentada.
 | COSIF incoerente com `tipo_contrato` | **83,3%** dos registros válidos | o código existe no domínio, mas pertence a outro tipo de contrato. NÃO é regra do contrato → vira métrica de observabilidade + pergunta formal ao data owner, nunca bloqueio (ADR-008) |
 | Taxa total de violação | ~8% por dia (8,07 / 8,08 / 7,93%) | dimensiona o limiar do gate: com default de 10%, este dataset fecha — e o mecanismo de bloqueio é provado por teste com limiar artificial (ADR-009) |
 
-## Os termos da tabela, em miúdos
+## Os termos da tabela
 
 **Grupo e linhas excedentes.** Grupo é o conjunto de linhas que compartilham o
 mesmo `id_transacao`; duplicado é o grupo com 2 ou mais. Linhas excedentes são
@@ -49,20 +78,47 @@ aparecer, que é ordem física de leitura, não critério — e duas execuções
 poderiam publicar saldos diferentes. Há teste que embaralha a ordem da
 entrada e exige o mesmo resultado.
 
+## A incoerência COSIF × tipo, em duas checagens
+
+Pergunta 1 (regra do contrato, R4): "esse código EXISTE?"
+O referencial cosif_dominio.csv tem 8 códigos válidos. Se o registro traz 9.9.9.99.9, que não está na lista → violação → quarentena. Foram 3.309.
+
+Pergunta 2 (NÃO é regra do contrato): "esse código existe, mas é do tipo CERTO?"
+Repare no referencial: cada código tem um tipo_contrato_associado — 1.3.1.00.0 é "Títulos - CDB", associado ao tipo CDB; 1.2.1.00.0 é "Poupança", associado ao tipo POUP. A incoerência é: um contrato de POUPANÇA carregando o código contábil de CDB. O código é real, existe no domínio, passa na regra 1 — mas a combinação é estranha.
+
+A analogia: é um CEP válido de outra cidade. O envelope tem um CEP que existe de verdade nos Correios (passa na validação "CEP existe") — mas é CEP de São Paulo num endereço escrito Curitiba. Você não devolve a carta; você anota a esquisitice e pergunta a quem mantém o cadastro.
+
+## Os números traçados
+
+196.689 = os registros cujo código passou na pergunta 1 (199.998 totais − 3.309 com código inexistente).
+
+163.938 = desses, quantos falham na pergunta 2: código válido, mas associado a OUTRO tipo de contrato.
+83,3% = 163.938 ÷ 196.689.
+
+E o detalhe: 83,3% é exatamente 5/6. Há 6 tipos de contrato; se o gerador do dataset sorteou o código independente do tipo, a chance de acertar o tipo por acaso é ~1/6 — e é precisamente o que se observa (16,7% coerente).
+
+Ou seja: o próprio número denuncia que, nesse dado sintético, código e tipo foram sorteados separadamente. Isso reforça a decisão: não é "83% do banco está errado", é "a relação código×tipo desse dataset não carrega informação — quem decide o que fazer é o dono do dado".
+
+## Por que medir e não bloquear (a decisão, ADR-008)
+
+O contrato só pede a pergunta 1. Bloquear pela pergunta 2 seria inventar regra que ninguém pediu.
+Se bloqueasse, quarentenaria 83% do banco — o fechamento não sairia. Uma "regra de qualidade" que reprova quase tudo não é regra, é sintoma de que a premissa está errada.
+Então vira DADO: a gold classificacao_cosif calcula a flag_coerente (src/lib/saldo.py — literalmente tipo_contrato == tipo_contrato_associado) e reporta a distribuição. O analista consulta por SQL, o data owner decide.
+Em síntese: código inexistente é violação e bloqueia; código de outro tipo é anomalia e vira flag — porque a primeira é regra do contrato e a segunda é pergunta ao dono do dado.
+
 ## Duas leituras que a tabela sustenta
 
 - **Nada é descartado em silêncio.** As 3.276 linhas excedentes de duplicata
   terminam 100% explicadas: 1.027 perdedoras dentro do lote + 2.053
   rejeitadas contra o histórico + 196 que caíram por violação própria antes
   de disputar. A conferência é do oráculo independente dos testes.
-- **Regra de qualidade nasce do contrato, não do engenheiro.** O achado mais
+- **Regra de qualidade nasce do contrato.** O achado mais
   grave (83% de incoerência COSIF) não virou bloqueio justamente porque o
   contrato não o pede: virou métrica publicada e pergunta a quem é dono da
   decisão.
 
 Todos os números desta página são reproduzíveis em segundos, por uma contagem
-independente do pipeline (Python puro, sem Spark — no mesmo espírito do
-oráculo dos testes):
+independente do pipeline:
 
 ```bash
 python3 scripts/analise_exploratoria.py
