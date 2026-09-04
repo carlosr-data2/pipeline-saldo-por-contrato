@@ -7,7 +7,7 @@ A primeira decisão de arquitetura aqui não é de tecnologia, e sim de
 direção: o dado chega em **lote diário** (há um `id_lote` por dia e uma partição
 `dt_processamento`); o consumidor é **um só e tem hora marcada** (o fechamento
 contábil de D+1 às 06:00); e o requisito de latência é um **deadline**, não
-frescor contínuo. Ninguém precisa do saldo atualizado às 14h37; precisa dele
+fluxo contínuo. Ninguém precisa do saldo atualizado às 14h37; precisa dele
 correto antes das 06:00.
 
 Isso é a definição de um *batch crítico com deadline*. Errar essa classificação
