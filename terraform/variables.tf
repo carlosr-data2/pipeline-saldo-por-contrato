@@ -44,3 +44,26 @@ variable "iceberg_versao" {
   type        = string
   default     = "1.10.2"
 }
+
+# --- Origem do Bronze (ADR-014) e laboratórios (docs/labs_aws.md) ---
+variable "origem_formato" {
+  description = "Formato lido pelo Bronze: parquet (raw/<nome>/dt_processamento=…, como o contrato define) ou csv (raw/<nome>.csv, o arquivo único de exemplo)"
+  type        = string
+  default     = "parquet"
+  validation {
+    condition     = contains(["parquet", "csv"], var.origem_formato)
+    error_message = "origem_formato deve ser parquet ou csv."
+  }
+}
+
+variable "origem_nome" {
+  description = "Nome do dataset em raw/ (diretório Parquet ou arquivo .csv). Troque para apontar o pipeline a um dataset sintético: -var origem_nome=sintetico_x10"
+  type        = string
+  default     = "fin_contabilidade_saldo_contrato"
+}
+
+variable "agendamento_ativo" {
+  description = "Mantém o disparo diário das 22:05 ligado. Desligue (-var agendamento_ativo=false) durante os laboratórios: a execução manual com {\"dt\": …} continua disponível"
+  type        = bool
+  default     = true
+}

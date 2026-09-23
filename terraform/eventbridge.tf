@@ -1,7 +1,8 @@
 # Gatilho: tempo, não chegada de arquivo (ADR-001). 22:05 no fuso de São Paulo,
 # logo após a janela D+0 22h do contrato.
 resource "aws_scheduler_schedule" "fechamento_diario" {
-  name = "${var.prefixo}-fechamento-diario"
+  name  = "${var.prefixo}-fechamento-diario"
+  state = var.agendamento_ativo ? "ENABLED" : "DISABLED"
 
   flexible_time_window {
     mode = "OFF"

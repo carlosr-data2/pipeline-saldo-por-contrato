@@ -6,6 +6,9 @@ warehouse/
 logs/
 dist/
 
+# origem convertida (Parquet particionado) e datasets sinteticos
+raw/
+
 # python
 __pycache__/
 *.pyc

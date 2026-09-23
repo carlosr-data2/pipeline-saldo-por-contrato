@@ -8,7 +8,8 @@ não depende de nada disto; esta trilha é a prova na plataforma real.
 
 - AWS CLI autenticada na conta pessoal (`aws sts get-caller-identity`)
 - Terraform >= 1.6
-- Docker não é necessário nesta trilha
+- Docker (ou um venv com PySpark, passando `PY=python` aos alvos do `make`) só para
+  converter a origem para Parquet particionado — o Terraform e a execução não precisam dele
 
 ## 1. Provisionar (uma vez)
 
@@ -22,7 +23,9 @@ terraform apply
 
 Depois do apply: **confirmar a inscrição do SNS** no e-mail recebido (sem isso, alertas não chegam).
 
-Publicar dados e jars (os scripts e o src.zip o próprio Terraform sobe):
+Publicar dados e jars (os scripts e o src.zip o próprio Terraform sobe). O alvo
+converte o CSV para Parquet particionado por `dt_processamento` — o formato de origem
+do contrato, que o Bronze lê por dia (ADR-014) — e publica os dois em `raw/`:
 
 ```bash
 cd ..
@@ -54,9 +57,14 @@ for dt in 2026-08-20 2026-08-21 2026-08-22; do
 done
 ```
 
+Cada execução passa o mesmo `dt` aos três jobs: o Bronze ingere só a partição do
+dia da origem Parquet e sobrescreve só ela (ADR-014) — o evento `bronze_commit` no
+CloudWatch mostra `changed-partition-count: 1`.
+
 O agendamento real (22:05 America/Sao_Paulo) fica provisionado e resolve o `dt`
 sozinho — a execução manual acima é o replay parametrizado (mesmo mecanismo do
-reprocessamento).
+reprocessamento). Para desligá-lo durante experimentos:
+`terraform apply -var agendamento_ativo=false`.
 
 ## 4. Checklist de evidências
 
@@ -87,3 +95,10 @@ leitura previsto no ADR-004).
 ```bash
 terraform -chdir=terraform destroy   # bucket com force_destroy: limpeza completa
 ```
+
+## 7. Laboratórios (opcional)
+
+Depois da prova de funcionamento, a conta serve para provocar cenários e observar a
+plataforma: Bronze por partição do dia, vazão medida num dataset sintético 10× e
+extrapolação para 300 M/dia — roteiro, custos e tabelas em
+[`docs/labs_aws.md`](labs_aws.md).

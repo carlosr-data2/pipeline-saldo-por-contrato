@@ -31,7 +31,7 @@ flowchart LR
     end
 
     subgraph pipeline["Pipeline (AWS Glue 5.0 — Spark 3.5 / PySpark)"]
-        J1["Job 1 · bronze_ingest<br/>tipagem do contrato<br/>partição dt_processamento"]
+        J1["Job 1 · bronze_ingest<br/>tipagem do contrato<br/>só a partição do dia (--dt)"]
         J2["Job 2 · silver_quality<br/>5 regras DQ + dedup<br/>quarentena c/ motivos<br/>GATE de fechamento"]
         J3["Job 3 · gold_saldo<br/>saldo(D)=snap(D-1)+mov(D)<br/>4 saídas + reconciliação"]
         J1 --> J2 --> J3
@@ -60,7 +60,8 @@ flowchart LR
 
 **Um dia na vida do pipeline:** às 22:05 (hora de São Paulo), o EventBridge
 Scheduler acorda a Step Function, que executa os três jobs Glue em sequência:
-tipagem, qualidade, saldo. Cada estágio grava tabelas Iceberg no S3, catalogadas
+tipagem, qualidade, saldo. Os três recebem o mesmo `dt`: o Bronze lê só a partição
+do dia na origem Parquet e sobrescreve só ela (ADR-014). Cada estágio grava tabelas Iceberg no S3, catalogadas
 no Glue Data Catalog. Se qualquer estágio falhar, a execução fica FAILED, um
 e-mail sai na hora via SNS, e a retomada é por **redrive**: a Step Function
 reexecuta *do estágio que falhou*, sem repetir o que já passou — é a razão de
@@ -81,7 +82,7 @@ que cada camada responde a um auditor:
 
 | Pergunta | Camada | Tabela | Partição |
 |---|---|---|---|
-| "O que chegou?" (cópia fiel) | raw | `s3://…/raw/` — arquivo imutável | — |
+| "O que chegou?" (cópia fiel) | raw | `s3://…/raw/<dataset>/` — Parquet particionado por `dt_processamento`, o formato do contrato, imutável (o CSV original fica ao lado) | `dt_processamento` (diretório) |
 | "O que recebemos, tipado?" | bronze | `bronze.fin_contabilidade_saldo_contrato` | `dt_processamento` |
 | — (referencial) | ref | `ref.cosif_dominio` | — |
 | "O que é válido?" | silver | `silver.fin_contabilidade_saldo_contrato` | `dt_processamento` |

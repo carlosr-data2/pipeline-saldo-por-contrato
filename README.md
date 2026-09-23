@@ -20,7 +20,7 @@ Duas trilhas de execução, mesmo código:
 ```mermaid
 flowchart LR
     EB["EventBridge<br/>22:05 BRT · DLQ"] --> SFN["Step Functions<br/>retries + redrive"]
-    SFN --> J1["Glue · bronze_ingest<br/>tipagem + partição"]
+    SFN --> J1["Glue · bronze_ingest<br/>tipagem + partição do dia"]
     J1 --> J2["Glue · silver_quality<br/>5 regras DQ + dedup<br/>quarentena + GATE"]
     J2 --> J3["Glue · gold_saldo<br/>saldo incremental<br/>4 saídas"]
     J1 & J2 & J3 -.- ICE[("S3 · Iceberg V3<br/>Glue Data Catalog")]
@@ -46,6 +46,7 @@ Pré-requisito: Docker.
 make demo    # build + bronze → silver (gate) → gold para os 3 dias + relatório
 make test    # suíte pytest completa (inclui o oráculo sobre o dataset real)
 make lint    # ruff
+ORIGEM=parquet make demo   # origem no formato do contrato (Parquet particionado) e Bronze por dia — ADR-014
 ```
 
 O `make demo` termina imprimindo o relatório de qualidade por partição, amostras
@@ -80,15 +81,20 @@ cd terraform && terraform init && terraform apply
 make aws-publicar-artefatos BUCKET=$(terraform -chdir=terraform output -raw bucket)
 ```
 
+**Laboratórios na conta real** — reoperar para provocar e observar: Bronze por
+partição do dia, vazão medida num dataset sintético 10× e extrapolação para
+300 M/dia: [`docs/labs_aws.md`](docs/labs_aws.md).
+
 ## Estrutura
 
 ```
 src/jobs/       bronze_ingest.py · silver_quality.py · gold_saldo.py  (PySpark puro, sem GlueContext)
 src/lib/        schema (contrato) · dq (5 regras) · dedup · saldo · session (catálogo) · log (JSON)
-tests/          unitários por regra · e2e · oráculo independente em Python puro
+tests/          unitários por regra · e2e · oráculo independente em Python puro · bronze por dia · gerador
+scripts/        demo · relatório · CSV→Parquet particionado · gerador sintético · medição de vazão no Glue
 terraform/      arquitetura AWS completa
 docker/         imagem pinada: Spark 3.5.4 + Java 17 + Iceberg 1.10.2 (paridade Glue 5.0)
-docs/           arquitetura + runbook AWS + 13 ADRs
+docs/           arquitetura + runbook AWS + laboratórios AWS + 14 ADRs
 dados/          dataset de exemplo (CSV) + referencial COSIF
 ```
 

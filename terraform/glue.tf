@@ -50,11 +50,20 @@ locals {
     "--SALDO_SHUFFLE_PARTITIONS"         = "16"
   }
 
+  # Origem do Bronze (ADR-014): diretório Parquet particionado por dt_processamento
+  # (o formato do contrato) ou o CSV único de exemplo. O dia (--dt) vem da Step Function.
+  origem_bronze = (
+    var.origem_formato == "csv"
+    ? "${local.s3_raw}/${var.origem_nome}.csv"
+    : "${local.s3_raw}/${var.origem_nome}"
+  )
+
   jobs = {
     bronze_ingest = {
       args = {
-        "--input" = "${local.s3_raw}/fin_contabilidade_saldo_contrato.csv"
-        "--cosif" = "${local.s3_raw}/cosif_dominio.csv"
+        "--input"   = local.origem_bronze
+        "--formato" = var.origem_formato
+        "--cosif"   = "${local.s3_raw}/cosif_dominio.csv"
       }
     }
     silver_quality = { args = {} }

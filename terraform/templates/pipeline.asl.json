@@ -11,8 +11,9 @@
     },
     "Bronze": {
       "Type": "Task",
+      "Comment": "Recebe o mesmo dt dos demais estágios: ingere e sobrescreve só a partição do dia na origem (ADR-014)",
       "Resource": "arn:aws:states:::glue:startJobRun.sync",
-      "Arguments": "{% { 'JobName': '${job_bronze}' } %}",
+      "Arguments": "{% { 'JobName': '${job_bronze}', 'Arguments': { '--dt': $states.input.dt } } %}",
       "Retry": [
         {
           "ErrorEquals": ["States.ALL"],
