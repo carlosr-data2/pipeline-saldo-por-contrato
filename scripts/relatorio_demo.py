@@ -1,6 +1,6 @@
-"""Relatório da demonstração: estado final das tabelas das três camadas.
+"""Relatório da execução local: estado final das tabelas das três camadas.
 
-Também prova, lendo o metadata.json de cada tabela, que TODO o dado foi escrito
+Também prova, lendo o metadata.json de cada tabela, que todo o dado foi escrito
 em Apache Iceberg V3 (requisito do projeto).
 """
 import glob

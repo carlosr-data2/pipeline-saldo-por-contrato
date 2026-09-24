@@ -18,5 +18,5 @@ for dia in "${DIAS[@]}"; do
   python src/jobs/gold_saldo.py --dt "${dia}"
 done
 
-echo "==> Relatório final da demonstração"
+echo "==> Relatório final"
 python scripts/relatorio_demo.py

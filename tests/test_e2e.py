@@ -1,5 +1,5 @@
 """Ponta a ponta com dados sintéticos controlados: bronze → silver (gate) → gold,
-num warehouse Iceberg temporário — mesmo caminho de código da produção."""
+num warehouse Iceberg temporário, mesmo caminho de código da produção."""
 import csv
 import dataclasses
 import glob
@@ -152,7 +152,7 @@ def test_reprocessamento_e_idempotente(spark, cfg, csvs):
 
 def test_gold_recusa_pular_dia_publicado_sem_snapshot(spark, cfg, csvs):
     """Guarda de continuidade: se o Gold de um dia não rodou (ex.: gate reprovado)
-    mas o Silver foi publicado, o dia seguinte NÃO pode somar por cima — o
+    mas o Silver foi publicado, o dia seguinte NÃO pode somar por cima: o
     movimento do dia pulado sumiria do saldo em silêncio, para sempre."""
     from jobs.gold_saldo import SnapshotDescontinuo
 

@@ -1,7 +1,7 @@
 """Configuração do pipeline, resolvida por variáveis de ambiente.
 
 O mesmo código roda local (catálogo Iceberg "hadoop" em filesystem) e no AWS Glue
-(catálogo Iceberg "glue" = Glue Data Catalog). A troca é 100% configuração — nenhum
+(catálogo Iceberg "glue" = Glue Data Catalog). A troca é 100% configuração, nenhum
 job importa GlueContext, o que mantém o motor portável.
 """
 import os

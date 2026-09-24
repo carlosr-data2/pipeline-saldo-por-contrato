@@ -32,12 +32,12 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "dados" {
 
 # Retenção 5y hot + 10y cold:
 #  - raw/ (arquivos imutáveis, nunca referenciados por metadado vivo): lifecycle
-#    por IDADE do objeto é seguro — Glacier aos 5 anos, expira aos 15.
-#  - warehouse/ (Iceberg): lifecycle por idade NÃO serve — um data file antigo
+#    por IDADE do objeto é seguro: Glacier aos 5 anos, expira aos 15.
+#  - warehouse/ (Iceberg): lifecycle por idade NÃO serve: um data file antigo
 #    continua referenciado pelo metadado atual da tabela; transicioná-lo quebra a
 #    leitura (InvalidObjectState) e expirá-lo corrompe a tabela. A retenção do
 #    warehouse é do próprio Iceberg (expire_snapshots + remoção de partições
-#    antigas na manutenção agendada — docs/arquitetura.md).
+#    antigas na manutenção agendada, ver docs/arquitetura.md).
 resource "aws_s3_bucket_lifecycle_configuration" "retencao" {
   bucket = aws_s3_bucket.dados.id
 

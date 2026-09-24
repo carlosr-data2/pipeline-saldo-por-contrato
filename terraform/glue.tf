@@ -1,5 +1,5 @@
 # Glue Data Catalog: um database por camada. Os jobs criam e evoluem as TABELAS
-# (schema é dono do código — ADR-010); a infra é dona de databases, jobs e permissões.
+# (schema é dono do código, ADR-010); a infra é dona de databases, jobs e permissões.
 resource "aws_glue_catalog_database" "camadas" {
   for_each = toset(["bronze", "silver", "gold", "ref"])
   name     = each.key
@@ -29,7 +29,7 @@ resource "aws_s3_object" "src_zip" {
 }
 
 locals {
-  # Glue 5.0 embarca Iceberg 1.7.x, que não escreve V3 — por isso o runtime 1.10.x
+  # Glue 5.0 embarca Iceberg 1.7.x, que não escreve V3, por isso o runtime 1.10.x
   # entra via --extra-jars com --user-jars-first (ADR-004). Os jars são publicados
   # pelo runbook (make aws-publicar-artefatos) por serem binários externos.
   jars_iceberg = join(",", [

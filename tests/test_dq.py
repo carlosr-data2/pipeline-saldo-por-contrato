@@ -85,7 +85,7 @@ def test_id_ja_publicado_no_historico_e_rejeitado(spark):
 
 
 def test_reenvio_corrigido_apos_quarentena_e_aceito(spark):
-    # id "tx-1" nunca foi PUBLICADO (não está no histórico do Silver) — o reenvio
+    # id "tx-1" nunca foi PUBLICADO (não está no histórico do Silver), o reenvio
     # corrigido de um registro quarentenado entra normalmente.
     resultado = avaliar(spark, LINHA_VALIDA, historico=["outro-id"])
     assert resultado[("tx-1", "100.50")] == []

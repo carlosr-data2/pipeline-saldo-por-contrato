@@ -1,12 +1,12 @@
 """Regras de negócio do saldo: sinal, estorno, movimento diário e snapshot incremental.
 
-Convenção de sinal (ADR-007 — o contrato não define; premissa registrada):
+Convenção de sinal (ADR-007; o contrato não define, premissa registrada):
   CREDITO, JUROS            -> aumentam o saldo (+)
   DEBITO, TARIFA, IOF       -> reduzem o saldo (−)
   flag_estorno = true       -> inverte o sinal do lançamento original
 
 Saldo incremental (ADR-005): saldo(D) = snapshot(D-1) ⟗ movimento(D).
-Nunca full scan do histórico — é isso que faz 300M/dia caber no SLA de 1h.
+Nunca full scan do histórico: é isso que faz 300M/dia caber no SLA de 1h.
 """
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
@@ -70,7 +70,7 @@ def classificacao_cosif(silver_dia: DataFrame, dominio_cosif: DataFrame, dt_refe
     """Distribuição contábil observada: tipo_contrato × cod_cosif, com o referencial.
 
     `flag_coerente` marca se o cod_cosif do lançamento é o associado ao tipo de
-    contrato no domínio — a incoerência não é regra do contrato (não bloqueia),
+    contrato no domínio. A incoerência não é regra do contrato (não bloqueia),
     mas é reportada como métrica de observabilidade (ADR-008).
     """
     dominio = F.broadcast(
@@ -90,7 +90,7 @@ def classificacao_cosif(silver_dia: DataFrame, dominio_cosif: DataFrame, dt_refe
 
 
 def reconciliacao_por_agencia(silver_dia: DataFrame, dt_referencia) -> DataFrame:
-    """Débitos vs. créditos por agência — controle contábil do fechamento."""
+    """Débitos vs. créditos por agência: controle contábil do fechamento."""
     return (
         silver_dia.groupBy("cod_agencia")
         .agg(

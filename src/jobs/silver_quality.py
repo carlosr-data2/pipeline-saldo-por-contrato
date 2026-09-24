@@ -1,4 +1,4 @@
-"""Job 2 — Silver: regras de qualidade, deduplicação, quarentena e gate de fechamento.
+"""Job 2, Silver: regras de qualidade, deduplicação, quarentena e gate de fechamento.
 
 Para a partição do dia:
   0. garante as 3 tabelas Silver (CREATE TABLE IF NOT EXISTS). Na primeira execução
@@ -8,7 +8,7 @@ Para a partição do dia:
   3. publica Silver (linhas limpas, com valor_assinado) e Quarentena (com motivos);
   4. publica o relatório de qualidade da partição (dq_relatorio);
   5. GATE: se a taxa de quarentena passar do limiar, o job falha DEPOIS de publicar
-     silver/quarentena/relatório — o dado de diagnóstico existe, mas o Gold não roda
+     silver/quarentena/relatório: o dado de diagnóstico existe, mas o Gold não roda
      e o fechamento não acontece com dado ruim (Step Functions para no erro).
 """
 import argparse
@@ -25,12 +25,12 @@ from lib.session import criar_spark, garantir_tabela
 
 
 class GateReprovado(RuntimeError):
-    """Qualidade abaixo do mínimo regulatório — fechamento bloqueado."""
+    """Qualidade abaixo do mínimo regulatório: fechamento bloqueado."""
 
 
 def escrever_particao(spark, df, tabela: str, dt_ref) -> int:
     """INSERT OVERWRITE dinâmico da partição; com DataFrame vazio, overwritePartitions
-    é no-op e deixaria linhas velhas num reprocessamento — nesse caso, limpa a partição."""
+    é no-op e deixaria linhas velhas num reprocessamento; nesse caso, limpa a partição."""
     qtd = df.count()
     if qtd > 0:
         df.writeTo(tabela).overwritePartitions()
@@ -97,7 +97,7 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
         )
         total_bronze = bronze_dia.count()
         if total_bronze == 0:
-            raise ValueError(f"partição {dt} vazia no Bronze — falha upstream ou data errada")
+            raise ValueError(f"partição {dt} vazia no Bronze: falha upstream ou data errada")
 
     with log.etapa("aplicacao_regras", dt=dt):
         dominio = spark.table(cfg.tb_ref_cosif)
@@ -113,7 +113,7 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
             .select("id_transacao")
         )
         avaliado = aplicar_regras(bronze_dia, dominio, ids_historico)
-        # persist: o resultado das regras alimenta Silver, Quarentena e o relatório —
+        # persist: o resultado das regras alimenta Silver, Quarentena e o relatório;
         # sem persist, o plano (janela + 2 joins) executaria três vezes.
         avaliado.persist()
 

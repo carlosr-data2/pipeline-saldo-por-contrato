@@ -1,8 +1,8 @@
-"""Job 1 — Bronze: ingestão do CSV com tipagem do contrato e partição por dt_processamento.
+"""Job 1, Bronze: ingestão do CSV com tipagem do contrato e partição por dt_processamento.
 
 Origem: CSV único com todos os campos como texto (conforme entregue).
 Destino: tabela Iceberg V3 particionada por dt_processamento, escrita com
-INSERT OVERWRITE dinâmico de partição — reprocessar o mesmo arquivo é idempotente.
+INSERT OVERWRITE dinâmico de partição: reprocessar o mesmo arquivo é idempotente.
 Também materializa o referencial COSIF (ref.cosif_dominio).
 """
 import argparse

@@ -2,17 +2,17 @@
 
 [![ci](https://github.com/carlosr-data2/pipeline-saldo-por-contrato/actions/workflows/ci.yml/badge.svg)](https://github.com/carlosr-data2/pipeline-saldo-por-contrato/actions/workflows/ci.yml)
 
-Pipeline batch de contabilidade regulatória: cálculo diário do **saldo consolidado
-por contrato e por conta**, com **classificação COSIF** e **reconciliação
-débito × crédito por agência** — Apache Spark (PySpark) + Apache **Iceberg V3**,
-arquitetura Medallion com **quarentena com motivos** (nunca descarte silencioso) e
-**gate de qualidade** bloqueando o fechamento.
+Pipeline batch de contabilidade regulatória: cálculo diário do saldo consolidado
+por contrato e por conta, com classificação COSIF e reconciliação
+débito × crédito por agência. Roda em Apache Spark (PySpark) + Apache Iceberg V3,
+em arquitetura Medallion, com quarentena com motivos (nunca descarte silencioso) e
+um gate de qualidade que bloqueia o fechamento.
 
 Duas trilhas de execução, mesmo código:
 
 | Trilha | Para quê | Como |
 |---|---|---|
-| **Local (Docker)** | demo de ponta a ponta, offline, 1 comando | `make demo` |
+| **Local (Docker)** | execução de ponta a ponta, offline, 1 comando | `make demo` |
 | **AWS (Terraform)** | Glue + Step Functions + Data Catalog na conta real, com custo medido | [`docs/runbook_aws.md`](docs/runbook_aws.md) |
 
 ## Arquitetura
@@ -28,17 +28,17 @@ flowchart LR
     CW["Alarmes-sentinela<br/>ausência de sinal"] -.-> SNS
 ```
 
-- `saldo(D) = snapshot(D−1) + movimento(D)` — incremental, nunca full scan do
+- `saldo(D) = snapshot(D−1) + movimento(D)`: incremental, nunca full scan do
   histórico; idempotente por INSERT OVERWRITE dinâmico da partição.
-- Silver publica **silver + quarentena (com motivos) + relatório DQ** e o gate
+- O Silver publica silver + quarentena (com motivos) + relatório DQ, e o gate
   bloqueia o Gold se a qualidade do lote estiver abaixo do mínimo.
 - Detalhes, leitura do SLA e dimensionamento para ~300M transações/dia:
   [`docs/arquitetura.md`](docs/arquitetura.md). Decisões com alternativas
   rejeitadas: [`docs/adr/`](docs/adr/).
-- **Rastreabilidade requisito ⇄ código**, com o "como verificar" de cada item:
-  [`docs/rastreabilidade.md`](docs/rastreabilidade.md).
+- Cada requisito do projeto mapeado para o código, com o "como verificar" de
+  cada item: [`docs/requisitos.md`](docs/requisitos.md).
 
-## Trilha local (Docker) — demo em um comando
+## Trilha local (Docker): pipeline em um comando
 
 Pré-requisito: Docker.
 
@@ -49,8 +49,8 @@ make lint    # ruff
 ```
 
 O `make demo` termina imprimindo o relatório de qualidade por partição, amostras
-das 4 saídas Gold e a prova de que **cada tabela está em Iceberg
-`format-version=3`**. Reexecutar a demo é idempotente. O warehouse local fica em
+das 4 saídas Gold e a prova de que cada tabela está em Iceberg
+`format-version=3`. Reexecutar é idempotente. O warehouse local fica em
 `warehouse/` (`make limpar` remove).
 
 Sem Docker (venv): `pip install -r requirements-dev.txt`, Java 17, jar do Iceberg
@@ -58,20 +58,20 @@ Sem Docker (venv): `pip install -r requirements-dev.txt`, Java 17, jar do Iceber
 e inclua-o via `PYSPARK_SUBMIT_ARGS="--jars $ICEBERG_JAR pyspark-shell"`), depois
 `bash scripts/demo.sh`.
 
-**Solução de problemas (WSL2):**
-- `Invalid update timestamp ...: before the latest metadata log entry` — o relógio
-  da VM do WSL divergiu do host (comum após hibernação do Windows); o Iceberg
+Solução de problemas (WSL2):
+- `Invalid update timestamp ...: before the latest metadata log entry`: o relógio
+  da VM do WSL divergiu do host (comum após hibernação do Windows), e o Iceberg
   recusa commit de metadado com relógio inconsistente, de propósito. Corrija com
   `make relogio` (ou `wsl --shutdown` no PowerShell) e rode `make limpar && make demo`.
-- `Permission denied` ao limpar `warehouse/` — os arquivos pertencem ao root do
+- `Permission denied` ao limpar `warehouse/`: os arquivos pertencem ao root do
   container (bind mount); use `make limpar`, que remove de dentro do container.
 
 ## Trilha AWS (Terraform)
 
-Toda a arquitetura é provisionada por IaC — S3 com retenção 5y hot/10y cold,
+Toda a arquitetura é provisionada por IaC: S3 com retenção 5y hot/10y cold,
 Glue Data Catalog e 3 jobs, Step Functions, EventBridge Scheduler com DLQ, SNS,
 alarmes-sentinela, IAM de menor privilégio e budget de US$ 10. Passo a passo,
-**estimativa de custo antes de cada execução** e checklist de evidências:
+estimativa de custo antes de cada execução e checklist de evidências:
 [`docs/runbook_aws.md`](docs/runbook_aws.md). A execução real na conta AWS está
 documentada, com capturas, em [`docs/evidencias.md`](docs/evidencias.md).
 
@@ -89,15 +89,15 @@ tests/          unitários por regra · e2e · oráculo independente em Python p
 terraform/      arquitetura AWS completa
 docker/         imagem pinada: Spark 3.5.4 + Java 17 + Iceberg 1.10.2 (paridade Glue 5.0)
 docs/           arquitetura + runbook AWS + 13 ADRs
-dados/          dataset de exemplo (CSV) + referencial COSIF
+dados/          dataset de exemplo (simulado, CSV) + referencial COSIF
 ```
 
 ## Qualidade e correção
 
-- As **5 regras do contrato** geram quarentena com `motivos[]`; a política de
-  unicidade é determinística e definida sobre **o que entra no razão**
+- As 5 regras do contrato geram quarentena com `motivos[]`; a política de
+  unicidade é determinística e definida sobre o que entra no razão
   ([ADR-006](docs/adr/ADR-006-unicidade-sobre-o-publicado.md)).
-- Correção provada por **dupla implementação**: um oráculo independente em Python
-  puro (sem Spark) recalcula contagens e saldos e os testes exigem igualdade
+- Correção provada por dupla implementação: um oráculo independente em Python
+  puro (sem Spark) recalcula contagens e saldos, e os testes exigem igualdade
   exata com o pipeline, contrato a contrato.
 - CI (GitHub Actions): lint + suíte completa + `terraform validate` a cada push.

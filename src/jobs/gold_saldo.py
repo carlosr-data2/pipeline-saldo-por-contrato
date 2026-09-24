@@ -1,13 +1,13 @@
-"""Job 3 — Gold: saldo incremental e agregações contábeis do dia de referência.
+"""Job 3, Gold: saldo incremental e agregações contábeis do dia de referência.
 
 Saídas (todas Iceberg V3, particionadas por dt_referencia, INSERT OVERWRITE dinâmico):
-  gold.saldo_contrato_diario  — snapshot completo: saldo(D) = snapshot(D-1) + movimento(D)
-  gold.saldo_conta_diario     — agregação do snapshot por conta
-  gold.classificacao_cosif    — tipo_contrato × cod_cosif com o referencial COSIF
-  gold.reconciliacao_agencia  — débitos vs. créditos por agência
+  gold.saldo_contrato_diario:  snapshot completo: saldo(D) = snapshot(D-1) + movimento(D)
+  gold.saldo_conta_diario:     agregação do snapshot por conta
+  gold.classificacao_cosif:    tipo_contrato × cod_cosif com o referencial COSIF
+  gold.reconciliacao_agencia:  débitos vs. créditos por agência
 
 Controle de consistência (antes de publicar QUALQUER saída): o líquido somado das
-agências deve bater com o movimento somado dos contratos — duas rotas de agregação
+agências deve bater com o movimento somado dos contratos: duas rotas de agregação
 independentes sobre o mesmo Silver. Divergência acima da tolerância aborta o job
 sem publicar nada.
 """
@@ -29,11 +29,11 @@ from lib.session import criar_spark, garantir_tabela
 
 
 class ReconciliacaoDivergente(RuntimeError):
-    """Agregações independentes não bateram — nada foi publicado."""
+    """Agregações independentes não bateram, nada foi publicado."""
 
 
 class SnapshotDescontinuo(RuntimeError):
-    """Há dia publicado no Silver sem snapshot Gold antes de dt_ref — somar por
+    """Há dia publicado no Silver sem snapshot Gold antes de dt_ref: somar por
     cima omitiria movimento válido do saldo em silêncio. Reprocessar em ordem."""
 
 
@@ -79,7 +79,7 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
         silver_dia.persist()
         total_silver = silver_dia.count()
         if total_silver == 0:
-            raise ValueError(f"partição {dt} vazia no Silver — gate reprovado ou data errada")
+            raise ValueError(f"partição {dt} vazia no Silver: gate reprovado ou data errada")
 
     with log.etapa("snapshot_incremental", dt=dt):
         movimento = movimento_por_contrato(silver_dia)
@@ -89,7 +89,7 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
         # Guarda de continuidade: se existe dia PUBLICADO no Silver entre a base
         # do snapshot e dt_ref sem snapshot Gold (ex.: gate reprovado no dia D e o
         # agendador seguiu para D+1), somar por cima pularia o movimento de D em
-        # silêncio — para sempre. Dias sem lote (sem Silver) não bloqueiam.
+        # silêncio, para sempre. Dias sem lote (sem Silver) não bloqueiam.
         filtro_lacuna = F.col("dt_processamento") < F.lit(dt_ref)
         if dt_anterior is not None:
             filtro_lacuna = filtro_lacuna & (F.col("dt_processamento") > F.lit(dt_anterior))
@@ -99,7 +99,7 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
         dias_pulados = [str(r["dt_processamento"]) for r in silver_sem_gold.collect()]
         if dias_pulados:
             raise SnapshotDescontinuo(
-                f"dias publicados no Silver sem snapshot Gold: {sorted(dias_pulados)} — "
+                f"dias publicados no Silver sem snapshot Gold: {sorted(dias_pulados)}; "
                 f"processe-os em ordem antes de {dt} (base atual do snapshot: {dt_anterior})"
             )
         snapshot_ant = (
@@ -151,7 +151,7 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Gold — saldo por contrato")
+    parser = argparse.ArgumentParser(description="Gold: saldo por contrato")
     parser.add_argument("--dt", required=True, help="data de referência (YYYY-MM-DD)")
     args, _ = parser.parse_known_args(argv)
 

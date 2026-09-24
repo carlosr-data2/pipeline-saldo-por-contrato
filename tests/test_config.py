@@ -12,7 +12,7 @@ def test_config_le_variaveis_de_ambiente(monkeypatch):
 
 
 def test_config_le_argumentos_no_formato_do_glue(monkeypatch):
-    """O Glue entrega default_arguments via argv (--NOME valor), nunca via env —
+    """O Glue entrega default_arguments via argv (--NOME valor), nunca via env:
     a config PRECISA enxergá-los, senão os jobs na AWS rodam com defaults locais."""
     monkeypatch.setattr(
         sys,

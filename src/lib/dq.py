@@ -4,11 +4,11 @@ Toda violação gera um motivo textual; a linha inteira vai para a quarentena co
 array de motivos (nunca descarte silencioso). O que não viola segue para o Silver.
 
 Regras do contrato:
-  R1 completude   — campos NOT NULL sem valor
-  R2 valor        — valor_lancamento > 0 (estorno é flag, não sinal)
-  R3 datas        — dt_lancamento <= dt_processamento
-  R4 cosif        — cod_cosif existe no domínio COSIF
-  R5 unicidade    — id_transacao único (no lote e contra o histórico recente)
+  R1 completude:   campos NOT NULL sem valor
+  R2 valor:        valor_lancamento > 0 (estorno é flag, não sinal)
+  R3 datas:        dt_lancamento <= dt_processamento
+  R4 cosif:        cod_cosif existe no domínio COSIF
+  R5 unicidade:    id_transacao único (no lote e contra o histórico recente)
 """
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
@@ -34,18 +34,18 @@ def aplicar_regras(
     """Anexa a coluna `motivos` (array). Linha limpa = array vazio.
 
     dominio_cosif: referencial com a coluna cod_cosif. É pequeno por natureza
-    (dezenas de linhas) — join broadcast explícito, sem shuffle do lado grande.
+    (dezenas de linhas): join broadcast explícito, sem shuffle do lado grande.
     ids_historico: ids já publicados no Silver na janela de lookback (ou None na
     primeira carga). Ao contrário do domínio, em produção tem centenas de milhões
-    de linhas — join com shuffle normal; quem limita o tamanho é a janela (ADR-006).
+    de linhas: join com shuffle normal; quem limita o tamanho é a janela (ADR-006).
     """
     df = com_hash_linha(df_tipado)
 
-    # R4 — existência no domínio (join de existência; broadcast explícito do referencial)
+    # R4: existência no domínio (join de existência; broadcast explícito do referencial)
     dominio = F.broadcast(dominio_cosif.select(F.col("cod_cosif").alias("_cosif_dominio")).distinct())
     df = df.join(dominio, df["cod_cosif"] == dominio["_cosif_dominio"], "left")
 
-    # R5 (histórico) — id já PUBLICADO em fechamento anterior dentro do lookback.
+    # R5 (histórico): id já PUBLICADO em fechamento anterior dentro do lookback.
     # Id apenas quarentenado não conta: reenvio corrigido é aceito (ADR-006).
     if ids_historico is not None:
         historico = ids_historico.select(F.col("id_transacao").alias("_id_historico")).distinct()
@@ -54,7 +54,7 @@ def aplicar_regras(
         df = df.withColumn("_id_historico", F.lit(None).cast("string"))
 
     # R1–R4 + R5-histórico primeiro: a unicidade intra-lote (abaixo) só disputa
-    # entre linhas válidas nessas regras — unicidade é sobre o que entra no razão.
+    # entre linhas válidas nessas regras; unicidade é sobre o que entra no razão.
     motivos_base = [
         F.when(F.col(campo).isNull(), F.lit(f"{MOTIVO_NULO}:{campo}")) for campo in NOMES_CAMPOS
     ] + [
@@ -66,7 +66,7 @@ def aplicar_regras(
     df = df.withColumn("_motivos_base", F.array_compact(F.array(*motivos_base)))
     df = df.withColumn("_valida_base", F.size("_motivos_base") == 0)
 
-    # R5 (lote) — entre as válidas de um mesmo id, só a primeira entra no razão
+    # R5 (lote): entre as válidas de um mesmo id, só a primeira entra no razão
     df = marcar_ordem_duplicata(df, "_valida_base")
     motivo_dup = F.when(F.col("_valida_base") & (F.col(COL_ORDEM_DUP) > 1), F.lit(MOTIVO_DUP_LOTE))
 

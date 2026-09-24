@@ -1,12 +1,12 @@
 """Deduplicação determinística de id_transacao.
 
-O dataset comprova que duplicatas NÃO são reentregas idênticas: todo id duplicado
+O dataset comprova que duplicatas NÃO são reenvios idênticos: todo id duplicado
 tem payloads divergentes. Regra adotada (ADR-006): unicidade é sobre o que ENTRA NO
-RAZÃO, não sobre o que chega —
+RAZÃO, não sobre o que chega:
   - dentro do lote: o vencedor é escolhido só entre as linhas válidas nas demais
     regras (linha inválida já vai à quarentena pelo próprio motivo e não pode
     "vencer" nem condenar uma linha válida); entre válidas, vence a de dt_lancamento
-    mais antigo, com empate decidido por hash da linha inteira — determinístico;
+    mais antigo, com empate decidido por hash da linha inteira (determinístico);
   - contra o histórico: id já PUBLICADO no Silver dentro do lookback vence sempre
     (não se retrata dado usado em fechamento anterior). Id apenas quarentenado no
     passado não conta: o reenvio corrigido de um registro rejeitado é aceito.
@@ -33,7 +33,7 @@ def marcar_ordem_duplicata(df: DataFrame, col_valida: str) -> DataFrame:
     """Numera as linhas de cada id_transacao, priorizando as válidas nas demais regras.
 
     Linhas inválidas ordenam depois de todas as válidas, portanto uma linha válida
-    com _ordem_dup > 1 sempre tem outra VÁLIDA à sua frente — só essas são
+    com _ordem_dup > 1 sempre tem outra VÁLIDA à sua frente; só essas são
     duplicatas perdedoras. Requer COL_HASH já presente (com_hash_linha).
     """
     janela = Window.partitionBy("id_transacao").orderBy(

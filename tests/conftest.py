@@ -36,7 +36,7 @@ def spark():
 def cfg(spark, tmp_path) -> Config:
     """Config isolada por teste: catálogo Iceberg próprio num warehouse temporário.
 
-    Catálogos Iceberg podem ser registrados em runtime via spark.conf — cada teste
+    Catálogos Iceberg podem ser registrados em runtime via spark.conf; cada teste
     enxerga só as suas tabelas.
     """
     catalogo = f"t{uuid.uuid4().hex[:8]}"

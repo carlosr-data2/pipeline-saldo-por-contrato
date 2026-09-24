@@ -1,56 +1,55 @@
-# ADR-004 — Apache Iceberg V3, com runtime próprio embarcado no Glue
+# ADR-004: Apache Iceberg V3, com runtime próprio embarcado no Glue
 
-## Contexto: por que "só Parquet" não basta neste caso
+## Contexto: por que "só Parquet" não basta aqui
 
-O projeto exige todo dado em **Iceberg V3**, mas vale entender por que a
-exigência faz sentido aqui, além de ser requisito. Parquet é um formato de
-**arquivo**: excelente em compressão e leitura colunar, mas sem noção de
-"tabela". Um diretório de Parquets não sabe o que é uma transação, um schema
-oficial ou uma versão. O Iceberg é a camada de **tabela** por cima dos arquivos
-(que continuam sendo Parquet), e é essa camada que um razão contábil de 5 anos
-exige.
+A especificação do projeto exige todo dado em Iceberg V3, e a exigência tem
+motivo. Parquet é um formato de arquivo: excelente em compressão e leitura
+colunar, mas sem noção de "tabela". Um diretório de Parquets não sabe o que é
+uma transação, um schema oficial ou uma versão. O Iceberg é a camada de tabela
+por cima dos arquivos (que continuam sendo Parquet), e é essa camada que um
+razão contábil de 5 anos exige.
 
 ## Decisão
 
 As 9 tabelas do pipeline em **Iceberg, `format-version=3`**, escritas com
-`iceberg-spark-runtime-3.5` **1.10.2** + `iceberg-aws-bundle` 1.10.2, a mesma
-versão **pinada nas três trilhas** (venv de desenvolvimento, imagem Docker,
-Glue), garantindo que o motor que valida localmente é o motor que roda na nuvem.
+`iceberg-spark-runtime-3.5` 1.10.2 + `iceberg-aws-bundle` 1.10.2, a mesma
+versão pinada nas três trilhas (venv de desenvolvimento, imagem Docker, Glue),
+garantindo que o motor que valida localmente é o motor que roda na nuvem.
 
 No Glue há um detalhe decisivo: o **Glue 5.0 embarca Iceberg 1.7.x, que não
-escreve V3**. A solução: os jars 1.10.2 entram por `--extra-jars`, com
+escreve V3**. Por isso os jars 1.10.2 entram por `--extra-jars`, com
 `--user-jars-first = true` (os nossos vencem no classpath) e
 `--datalake-formats` vazio. Sem isso, o Iceberg nativo subiria junto e o
 conflito de versões geraria erros difíceis de diagnosticar.
 
 ## O que o Iceberg acrescenta, concretamente
 
-1. **Commit atômico** — o INSERT OVERWRITE de partição do pipeline é uma troca
-   de snapshot: um leitor vê o estado anterior ou o novo, nunca o meio. Em
+1. **Commit atômico**: o INSERT OVERWRITE de partição do pipeline é uma troca
+   de snapshot, e um leitor vê o estado anterior ou o novo, nunca o meio. Em
    Parquet puro, overwrite é "apaga e regrava" com uma janela de inconsistência
    no meio do fechamento. (Visto na prática durante o desenvolvimento: um clock
    skew de ambiente fez o Iceberg *recusar* um commit inconsistente em vez de
    corromper a tabela, que é o comportamento que se quer de um razão.)
-2. **Time travel** — "o que o fechamento viu às 02h?" é uma consulta de
-   snapshot; requisito de auditoria que em Parquet puro exigiria cópias manuais.
-3. **Evolução de schema e de partição por metadado** — sem reescrever 5 anos de
+2. **Time travel**: "o que o fechamento viu às 02h?" é uma consulta de
+   snapshot. Requisito de auditoria que em Parquet puro exigiria cópias manuais.
+3. **Evolução de schema e de partição por metadado**, sem reescrever 5 anos de
    dados quando o contrato mudar.
-4. **Poda por estatísticas de arquivo** (min/max por coluna) — além da poda de
+4. **Poda por estatísticas de arquivo** (min/max por coluna): além da poda de
    partição, o motor pula arquivos inteiros que não contêm o que a consulta
    busca.
 
-Custo aceito: o metadado precisa de manutenção — compactação
-(`rewrite_data_files`) e expiração de snapshots (`expire_snapshots`), agendadas
+Custo aceito: o metadado precisa de manutenção, com compactação
+(`rewrite_data_files`) e expiração de snapshots (`expire_snapshots`) agendadas
 fora da janela na evolução de produção.
 
-## O risco do V3, e o plano B
+## O risco do V3 e as mitigações
 
-O V3 é recente, e o ecossistema de **leitura** ainda é desigual: o Athena, por
-exemplo, pode recusar tabelas V3. Mitigações em camadas: o consumidor de
-referência desta solução é Spark (que lê V3 com o runtime embarcado); a
-conformidade é verificada em vez de presumida — o relatório da demo lê o
+O V3 é recente, e o ecossistema de leitura ainda é desigual: o Athena, por
+exemplo, pode recusar tabelas V3. As mitigações são em camadas. O consumidor de
+referência desta solução é Spark (que lê V3 com o runtime embarcado). A
+conformidade é verificada em vez de presumida: o relatório de execução lê o
 `metadata.json` de cada tabela e valida `format-version: 3`, com teste
-automatizado; e se um consumidor V3 travar em produção, rebaixar para V2 é
+automatizado. E se um consumidor V3 travar em produção, rebaixar para V2 é
 uma propriedade na criação da tabela, sem mudar uma linha do pipeline.
 
 ## Alternativa rejeitada

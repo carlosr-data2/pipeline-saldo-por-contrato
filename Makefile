@@ -1,4 +1,4 @@
-# Trilha LOCAL (Docker) — demonstração de ponta a ponta sem AWS.
+# Trilha local (Docker): pipeline de ponta a ponta sem AWS.
 #   make build   constrói a imagem (Spark 3.5.4 + Java 17 + Iceberg 1.10.2)
 #   make demo    executa o pipeline completo (3 dias) e imprime o relatório
 #   make test    roda a suíte de testes dentro do container
@@ -32,7 +32,7 @@ shell: build
 	$(COMPOSE) run --rm pipeline bash
 
 # roda dentro do container: os arquivos do warehouse são criados pelo root do
-# container via bind mount — apagar no host falharia com Permission denied
+# container via bind mount; apagar no host falharia com Permission denied
 limpar:
 	$(COMPOSE) run --rm pipeline rm -rf warehouse logs
 
@@ -44,7 +44,7 @@ relogio:
 	sudo hwclock -s
 	date
 
-# Trilha AWS — depois de `terraform apply` (ver docs/runbook_aws.md):
+# Trilha AWS, depois de `terraform apply` (ver docs/runbook_aws.md):
 #   make aws-publicar-artefatos BUCKET=<saida `bucket` do terraform>
 # Sobe os dados de origem e os jars do Iceberg; scripts e src.zip o Terraform já sobe.
 
