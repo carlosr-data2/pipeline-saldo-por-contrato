@@ -1,11 +1,14 @@
-"""Job 2 — Silver: regras de qualidade, deduplicação, quarentena e gate de fechamento.
+"""Job 2, Silver: regras de qualidade, deduplicação, quarentena e gate de fechamento.
 
 Para a partição do dia:
-  1. aplica as 5 regras do contrato (lib.dq) + dedup determinística (lib.dedup);
-  2. publica Silver (linhas limpas, com valor_assinado) e Quarentena (com motivos);
-  3. publica o relatório de qualidade da partição (dq_relatorio);
-  4. GATE: se a taxa de quarentena passar do limiar, o job falha DEPOIS de publicar
-     silver/quarentena/relatório — o dado de diagnóstico existe, mas o Gold não roda
+  0. garante as 3 tabelas Silver (CREATE TABLE IF NOT EXISTS). Na primeira execução
+     isso grava só o metadata.json de cada tabela: sem snapshot e sem data files;
+  1. lê a partição do Bronze; se estiver vazia, falha aqui (ValueError) sem publicar nada;
+  2. aplica as 5 regras do contrato (lib.dq) + dedup determinística (lib.dedup);
+  3. publica Silver (linhas limpas, com valor_assinado) e Quarentena (com motivos);
+  4. publica o relatório de qualidade da partição (dq_relatorio);
+  5. GATE: se a taxa de quarentena passar do limiar, o job falha DEPOIS de publicar
+     silver/quarentena/relatório: o dado de diagnóstico existe, mas o Gold não roda
      e o fechamento não acontece com dado ruim (Step Functions para no erro).
 """
 import argparse
@@ -22,12 +25,12 @@ from lib.session import criar_spark, garantir_tabela
 
 
 class GateReprovado(RuntimeError):
-    """Qualidade abaixo do mínimo regulatório — fechamento bloqueado."""
+    """Qualidade abaixo do mínimo regulatório: fechamento bloqueado."""
 
 
 def escrever_particao(spark, df, tabela: str, dt_ref) -> int:
     """INSERT OVERWRITE dinâmico da partição; com DataFrame vazio, overwritePartitions
-    é no-op e deixaria linhas velhas num reprocessamento — nesse caso, limpa a partição."""
+    é no-op e deixaria linhas velhas num reprocessamento; nesse caso, limpa a partição."""
     qtd = df.count()
     if qtd > 0:
         df.writeTo(tabela).overwritePartitions()
@@ -37,8 +40,34 @@ def escrever_particao(spark, df, tabela: str, dt_ref) -> int:
 
 
 def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
+    """Processa uma partição do Bronze e publica Silver, Quarentena e o relatório de qualidade.
+
+    Cada passo é um ``log.etapa`` (o nome aparece nos logs):
+      0. preparacao_tabelas: CREATE TABLE IF NOT EXISTS das 3 tabelas Silver;
+      1. leitura_bronze: filtra dt_processamento = dt;
+      2. aplicacao_regras: R1–R5 + dedup contra a Silver dos N dias anteriores;
+      3. escrita_silver_quarentena: sobrescreve a partição (ou limpa, se vazia);
+      4. relatorio_qualidade: métricas da partição em dq_relatorio;
+      5. gate: compara a taxa de quarentena com o limiar, DEPOIS de publicar.
+
+    Idempotente por partição: reexecutar o mesmo dt substitui o que havia nela.
+
+    Args:
+        spark: sessão com o catálogo Iceberg configurado (lib.session.criar_spark).
+        cfg: nomes das tabelas, limiar do gate e janela do lookback.
+        log: logger estruturado do job.
+        dt: partição a processar, 'YYYY-MM-DD' (vem da Step Function).
+
+    Raises:
+        ValueError: partição vazia no Bronze. Nada é publicado, mas as tabelas do
+            passo 0 podem ter sido criadas.
+        GateReprovado: taxa de quarentena acima do limiar. Silver, Quarentena e
+            relatório já foram publicados.
+    """
     dt_ref = date.fromisoformat(dt)
 
+    # Antes da leitura: o lookback (aplicacao_regras) lê a própria Silver, que
+    # precisa existir já na primeira execução.
     with log.etapa("preparacao_tabelas"):
         spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {cfg.catalogo}.silver")
         garantir_tabela(
@@ -68,10 +97,12 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
         )
         total_bronze = bronze_dia.count()
         if total_bronze == 0:
-            raise ValueError(f"partição {dt} vazia no Bronze — falha upstream ou data errada")
+            raise ValueError(f"partição {dt} vazia no Bronze: falha upstream ou data errada")
 
     with log.etapa("aplicacao_regras", dt=dt):
         dominio = spark.table(cfg.tb_ref_cosif)
+        # Histórico = dias anteriores dentro da janela, SEM o próprio dt: ao
+        # reprocessar o dia, as linhas publicadas antes não podem condenar a si mesmas.
         inicio_lookback = dt_ref - timedelta(days=cfg.dedup_lookback_dias)
         ids_historico = (
             spark.table(cfg.tb_silver)
@@ -82,7 +113,7 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
             .select("id_transacao")
         )
         avaliado = aplicar_regras(bronze_dia, dominio, ids_historico)
-        # persist: o resultado das regras alimenta Silver, Quarentena e o relatório —
+        # persist: o resultado das regras alimenta Silver, Quarentena e o relatório;
         # sem persist, o plano (janela + 2 joins) executaria três vezes.
         avaliado.persist()
 
@@ -129,6 +160,7 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
 
     avaliado.unpersist()
 
+    # total_bronze > 0 garantido pela guarda de leitura_bronze.
     taxa_quarentena = 100.0 * total_quarentena / total_bronze
     log.evento(
         "qualidade_particao",
@@ -146,6 +178,11 @@ def executar(spark, cfg: Config, log: JobLogger, dt: str) -> None:
 
 
 def main(argv=None) -> int:
+    """Ponto de entrada do job: lê --dt, monta config/Spark e roda ``executar``.
+
+    Exceções são registradas (evento job_falhou) e relançadas: é a exceção que
+    marca o run do Glue como FAILED e aciona o retry da Step Function.
+    """
     parser = argparse.ArgumentParser(description="Qualidade Silver")
     parser.add_argument("--dt", required=True, help="partição dt_processamento (YYYY-MM-DD)")
     args, _ = parser.parse_known_args(argv)

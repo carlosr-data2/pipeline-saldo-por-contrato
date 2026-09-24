@@ -28,7 +28,7 @@
     },
     "Silver": {
       "Type": "Task",
-      "Comment": "1 retentativa apenas: a falha dominante deste estágio (gate de qualidade reprovado) é determinística — repetir não conserta dado ruim, só queima janela; o Glue não distingue o tipo de erro para a SFN, então o orçamento de retry é menor onde o erro tende a ser de negócio",
+      "Comment": "1 retentativa apenas: a falha dominante deste estágio (gate de qualidade reprovado) é determinística; repetir não conserta dado ruim, só queima janela; o Glue não distingue o tipo de erro para a SFN, então o orçamento de retry é menor onde o erro tende a ser de negócio",
       "Resource": "arn:aws:states:::glue:startJobRun.sync",
       "Arguments": "{% { 'JobName': '${job_silver}', 'Arguments': { '--dt': $states.input.dt } } %}",
       "Retry": [

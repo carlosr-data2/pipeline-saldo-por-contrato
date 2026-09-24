@@ -12,7 +12,7 @@ COPY requirements-dev.txt requirements.txt /tmp/
 RUN pip install --no-cache-dir -r /tmp/requirements-dev.txt
 
 # O jar entra no diretório de jars do PySpark: nenhuma configuração extra de
-# submit é necessária — espelho do --extra-jars do Glue.
+# submit é necessária: espelho do --extra-jars do Glue.
 ARG ICEBERG_VERSAO=1.10.2
 RUN curl -sSL --retry 5 --retry-delay 15 \
       -o /usr/local/lib/python3.11/site-packages/pyspark/jars/iceberg-spark-runtime-3.5_2.12-${ICEBERG_VERSAO}.jar \

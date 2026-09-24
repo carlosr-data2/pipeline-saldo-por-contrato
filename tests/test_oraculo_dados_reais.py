@@ -1,4 +1,4 @@
-"""Prova de correção por dupla implementação, sobre o dataset REAL do projeto:
+"""Prova de correção por dupla implementação, sobre o dataset de exemplo completo:
 o pipeline Spark e o oráculo em Python puro (tests/oraculo.py) devem produzir
 exatamente as mesmas contagens de qualidade e os mesmos saldos."""
 import os

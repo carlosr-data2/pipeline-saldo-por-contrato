@@ -1,13 +1,13 @@
-"""Gera um dataset sintético FATOR vezes maior que o dataset de exemplo, com o MESMO perfil:
+"""Gera um dataset sintético FATOR vezes maior que o de exemplo, com o mesmo perfil:
 schema do contrato com campos em texto, 3 partições diárias, cardinalidades escaladas
 (contas, 3 a 5 contratos por conta, 46 agências) e as violações de qualidade nas
-taxas medidas na análise exploratória — id_conta nulo, COSIF inexistente, data
+taxas medidas na análise exploratória: id_conta nulo, COSIF inexistente, data
 futura (+2 dias), valor negativo/zero, duplicatas no lote e duplicatas cruzando dias,
 sempre com payload divergente. COSIF sorteado independente do tipo (5/6 incoerente).
 
 Propositalmente em Python puro (stdlib, sem Spark), determinístico por --seed.
 É o insumo do laboratório de vazão (docs/labs_aws.md): medir o pipeline num volume
-maior que o dataset de exemplo e extrapolar para os ~300 M/dia de produção.
+maior que o de exemplo e extrapolar para os ~300 M/dia de produção.
 
 Uso:
     python3 scripts/gerar_dataset_sintetico.py --fator 10 --saida raw/sintetico_x10.csv
@@ -40,7 +40,7 @@ AGENCIAS = sorted(f"{a:04d}" for a in random.Random(46).sample(range(1, 500), 46
 TAXA_ESTORNO = 0.049
 
 # Taxas por dia medidas no dataset de exemplo (docs/analise_exploratoria.md):
-# somam ~8,1% de linhas em quarentena — abaixo do gate de 10%, como no original.
+# somam ~8,1% de linhas em quarentena, abaixo do gate de 10%, como no original.
 TAXAS = {
     "id_conta_nulo": 0.0122,
     "cosif_inexistente": 0.0163,

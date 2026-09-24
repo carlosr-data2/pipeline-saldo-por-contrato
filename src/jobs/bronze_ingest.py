@@ -1,17 +1,17 @@
-"""Job 1 — Bronze: ingestão da origem com tipagem do contrato e partição por dt_processamento.
+"""Job 1, Bronze: ingestão da origem com tipagem do contrato e partição por dt_processamento.
 
 Origem (--formato):
-  parquet — diretório particionado por dt_processamento, o formato de origem que o
-            contrato define (raw/<nome>/dt_processamento=YYYY-MM-DD/);
-  csv     — arquivo único com todos os campos como texto, como chega da origem.
+  parquet: diretório particionado por dt_processamento, o formato de origem que o
+           contrato define (raw/<nome>/dt_processamento=YYYY-MM-DD/);
+  csv:     arquivo único com todos os campos como texto (o dataset de exemplo).
 Modo (--dt):
-  com --dt — ingere SÓ a partição do dia e sobrescreve só ela: é o fechamento diário
-             (ADR-014). Na origem Parquet o filtro vira poda de partição — só o
-             diretório do dia é aberto;
-  sem --dt — ingere todas as partições presentes na origem (carga inicial; o CSV do
-             exemplo traz três dias de uma vez).
+  com --dt: ingere só a partição do dia e sobrescreve só ela; é o fechamento diário
+            (ADR-014). Na origem Parquet o filtro vira poda de partição e só o
+            diretório do dia é aberto;
+  sem --dt: ingere todas as partições presentes na origem (carga inicial; o CSV de
+            exemplo traz três dias de uma vez).
 Destino: tabela Iceberg V3 particionada por dt_processamento, escrita com INSERT
-OVERWRITE dinâmico de partição — reprocessar um dia é idempotente e não toca os demais.
+OVERWRITE dinâmico de partição: reprocessar um dia é idempotente e não toca os demais.
 Também materializa o referencial COSIF (ref.cosif_dominio).
 """
 import argparse
@@ -35,7 +35,7 @@ def ler_origem(spark, caminho: str, formato: str) -> DataFrame:
 
     No Parquet particionado, dt_processamento não está dentro dos arquivos: vem do
     caminho (dt_processamento=YYYY-MM-DD) e o Spark infere o tipo. O cast para string
-    devolve o campo à forma de entrega do contrato (texto) sem perder a poda: um
+    devolve o campo à forma do contrato (texto) sem perder a poda: um
     predicado sobre a coluna de partição continua sendo avaliado nos metadados do
     diretório, antes de abrir qualquer arquivo.
     """
@@ -98,10 +98,10 @@ def executar(
             # empurra até a leitura (poda) e só o diretório do dia é aberto. A contagem
             # antes de escrever custa uma leitura extra da partição, mas evita o silêncio:
             # com DataFrame vazio, overwritePartitions é no-op e o "dia ingerido" não
-            # existiria — o Silver só acusaria depois, com um job a mais na conta.
+            # existiria, e o Silver só acusaria depois, com um job a mais na conta.
             tipado = tipado.where(F.col("dt_processamento") == F.lit(dt_ref))
             if tipado.count() == 0:
-                raise ValueError(f"partição {dt} vazia na origem — lote não chegou ou data errada")
+                raise ValueError(f"partição {dt} vazia na origem: lote não chegou ou data errada")
         tipado.writeTo(cfg.tb_bronze).overwritePartitions()
         log.evento("bronze_commit", dt=dt, modo=modo, commit=resumo_ultimo_commit(spark, cfg.tb_bronze))
 

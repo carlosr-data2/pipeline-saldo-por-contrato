@@ -52,7 +52,7 @@ def test_por_dia_sobrescreve_so_a_particao_do_dia(spark, cfg, tmp_path, cosif):
     dia20_antes = particao(spark, cfg, "2026-08-20")
     assert set(dia20_antes) == {"a20", "b20"}
 
-    # versão 2 da origem: o dia 21 ganha uma linha e o dia 20 muda — mas só o 21 é pedido
+    # versão 2 da origem: o dia 21 ganha uma linha e o dia 20 muda, mas só o 21 é pedido
     v2 = linhas_base()
     v2[0] = dict(v2[0], valor_lancamento="999.99")
     v2.append(linha("b21", "2026-08-21", "12:00:00"))

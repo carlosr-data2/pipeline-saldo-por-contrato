@@ -1,4 +1,4 @@
-# Trilha LOCAL (Docker) — demonstração de ponta a ponta sem AWS.
+# Trilha local (Docker): pipeline de ponta a ponta sem AWS.
 #   make build   constrói a imagem (Spark 3.5.4 + Java 17 + Iceberg 1.10.2)
 #   make demo    executa o pipeline completo (3 dias) e imprime o relatório
 #   make test    roda a suíte de testes dentro do container
@@ -10,8 +10,8 @@ COMPOSE := docker compose
 
 .PHONY: build demo relatorio test lint shell limpar relogio
 
-# Origem da demo: csv (CSV único, um Bronze para os três dias — como entregue) ou
-# parquet (converte para Parquet particionado e roda o Bronze por dia — ADR-014).
+# Origem da demo: csv (CSV único, um Bronze para os três dias, como no dataset de exemplo)
+# ou parquet (converte para Parquet particionado e roda o Bronze por dia, ADR-014).
 ORIGEM ?= csv
 
 build:
@@ -36,7 +36,7 @@ shell: build
 	$(COMPOSE) run --rm pipeline bash
 
 # roda dentro do container: os arquivos do warehouse são criados pelo root do
-# container via bind mount — apagar no host falharia com Permission denied
+# container via bind mount; apagar no host falharia com Permission denied
 limpar:
 	$(COMPOSE) run --rm pipeline rm -rf warehouse logs
 
@@ -48,10 +48,10 @@ relogio:
 	sudo hwclock -s
 	date
 
-# Trilha AWS — depois de `terraform apply` (ver docs/runbook_aws.md):
+# Trilha AWS, depois de `terraform apply` (ver docs/runbook_aws.md):
 #   make aws-publicar-artefatos BUCKET=<saida `bucket` do terraform>
 # Sobe os dados de origem (CSV + Parquet particionado por dt_processamento, o formato
-# do contrato — ADR-014) e os jars do Iceberg; scripts e src.zip o Terraform já sobe.
+# do contrato, ADR-014) e os jars do Iceberg; scripts e src.zip o Terraform já sobe.
 
 ICEBERG_VERSAO := 1.10.2
 MAVEN := https://repo1.maven.org/maven2/org/apache/iceberg

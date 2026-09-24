@@ -2,9 +2,9 @@
 # Demo de ponta a ponta na trilha local: bronze → silver (gate) → gold, 3 dias.
 # Nenhuma chamada de API AWS. Reexecutar é idempotente (INSERT OVERWRITE de partição).
 #
-#   ORIGEM=csv     (padrão) CSV único, um Bronze para os três dias — como chega da origem
+#   ORIGEM=csv     (padrão) CSV único, um Bronze para os três dias (o dataset de exemplo)
 #   ORIGEM=parquet converte o CSV para Parquet particionado por dt_processamento (o formato
-#                  de origem do contrato) e roda o Bronze POR DIA, só a partição do dia (ADR-014)
+#                  de origem do contrato) e roda o Bronze por dia, só a partição do dia (ADR-014)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -34,5 +34,5 @@ for dia in "${DIAS[@]}"; do
   python src/jobs/gold_saldo.py --dt "${dia}"
 done
 
-echo "==> Relatório final da demonstração"
+echo "==> Relatório final"
 python scripts/relatorio_demo.py

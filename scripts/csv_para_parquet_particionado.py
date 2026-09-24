@@ -2,7 +2,7 @@
 particionado por dt_processamento (raw/<nome>/dt_processamento=YYYY-MM-DD/*.parquet).
 
 Todos os campos continuam como TEXTO: a tipagem e a validação são responsabilidade
-do Bronze (especificação). Aqui só se reproduz o layout de entrega — nada é validado,
+do Bronze, como a especificação pede. Aqui só se reproduz o layout de origem; nada é validado,
 convertido ou descartado. Serve à trilha local (ORIGEM=parquet make demo) e à
 publicação em raw/ na AWS (make aws-publicar-origem). ADR-014.
 
@@ -28,7 +28,7 @@ def converter(spark, caminho_csv: str, destino: str, arquivos_por_particao: int 
     bruto = spark.read.csv(caminho_csv, header=True, inferSchema=False).select(*NOMES_CAMPOS)
     if arquivos_por_particao:
         # round-robin: cada partição de dt_processamento recebe N arquivos (útil para
-        # simular a entrega em vários arquivos e o paralelismo de leitura)
+        # simular o lote chegando em vários arquivos e o paralelismo de leitura)
         bruto = bruto.repartition(arquivos_por_particao)
     bruto.write.mode("overwrite").partitionBy("dt_processamento").parquet(destino)
     layout = (

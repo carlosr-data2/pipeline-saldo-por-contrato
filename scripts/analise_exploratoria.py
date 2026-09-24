@@ -1,4 +1,4 @@
-"""Análise exploratória do dataset — recomputa os números de docs/analise_exploratoria.md.
+"""Análise exploratória do dataset: recomputa os números de docs/analise_exploratoria.md.
 
 Propositalmente em Python puro (stdlib, sem Spark): uma contagem independente do
 pipeline, no mesmo espírito do oráculo dos testes. Qualquer pessoa confere os
@@ -74,7 +74,7 @@ def main() -> None:
     print(f"grupos com conteúdo 100% idêntico: {fmt(identicas)}"
           " -> são colisões com payload divergente, não reentregas")
     print(f"grupos cruzando dias de processamento: {fmt(cruzam)}"
-          f" ({100 * cruzam / len(dups):.0f}% — dedup só-no-lote não bastaria)")
+          f" ({100 * cruzam / len(dups):.0f}%; dedup só no lote não bastaria)")
 
     print("\n=== Incoerência COSIF x tipo de contrato (não é regra do contrato) ===")
     no_dominio = [

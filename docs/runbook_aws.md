@@ -1,7 +1,7 @@
-# Runbook — Trilha AWS (execução e evidências)
+# Runbook: trilha AWS (execução e evidências)
 
 A trilha AWS prova a arquitetura na conta real: jobs no Glue, tabelas no Data Catalog,
-orquestração na Step Function e **custo medido**. A demonstração local (`make demo`)
+orquestração na Step Function e custo medido. A execução local (`make demo`)
 não depende de nada disto; esta trilha é a prova na plataforma real.
 
 ## 0. Pré-requisitos
@@ -9,7 +9,7 @@ não depende de nada disto; esta trilha é a prova na plataforma real.
 - AWS CLI autenticada na conta pessoal (`aws sts get-caller-identity`)
 - Terraform >= 1.6
 - Docker (ou um venv com PySpark, passando `PY=python` aos alvos do `make`) só para
-  converter a origem para Parquet particionado — o Terraform e a execução não precisam dele
+  converter a origem para Parquet particionado; o Terraform e a execução não precisam dele
 
 ## 1. Provisionar (uma vez)
 
@@ -24,8 +24,8 @@ terraform apply
 Depois do apply: **confirmar a inscrição do SNS** no e-mail recebido (sem isso, alertas não chegam).
 
 Publicar dados e jars (os scripts e o src.zip o próprio Terraform sobe). O alvo
-converte o CSV para Parquet particionado por `dt_processamento` — o formato de origem
-do contrato, que o Bronze lê por dia (ADR-014) — e publica os dois em `raw/`:
+converte o CSV para Parquet particionado por `dt_processamento` (o formato de origem
+do contrato, que o Bronze lê por dia, ADR-014) e publica os dois em `raw/`:
 
 ```bash
 cd ..
@@ -39,15 +39,15 @@ Fórmula do Glue: `custo = workers × DPU/worker × horas × US$0,44 (us-east-1)
 | Item | Conta | Estimativa |
 |---|---|---|
 | 1 job Glue (G.1X = 1 DPU, 2 workers, ~3 min) | 2 × 0,05h × 0,44 | ~US$ 0,05 |
-| 1 execução do pipeline (3 jobs) | 3 × 0,05 | **~US$ 0,14** |
+| 1 execução do pipeline (3 jobs) | 3 × 0,05 | ~US$ 0,14 |
 | 3 execuções (dias 20, 21, 22) | 3 × 0,14 | ~US$ 0,42 |
-| Step Functions, S3, logs, SNS | — | centavos |
-| **Total esperado do exercício** | | **< US$ 1** |
+| Step Functions, S3, logs, SNS | | centavos |
+| **Total esperado** | | **< US$ 1** |
 
 Guarda-corpos: budget de US$ 10 com alerta em 80%, `timeout` de 15 min por job,
 `MaxConcurrentRuns=1`. Se algo travar, o teto do estrago é conhecido.
 
-## 3. Executar o fechamento (3 dias, em ordem — o saldo é incremental)
+## 3. Executar o fechamento (3 dias, em ordem: o saldo é incremental)
 
 ```bash
 ARN=$(terraform -chdir=terraform output -raw state_machine_arn)
@@ -58,11 +58,11 @@ done
 ```
 
 Cada execução passa o mesmo `dt` aos três jobs: o Bronze ingere só a partição do
-dia da origem Parquet e sobrescreve só ela (ADR-014) — o evento `bronze_commit` no
+dia da origem Parquet e sobrescreve só ela (ADR-014). O evento `bronze_commit` no
 CloudWatch mostra `changed-partition-count: 1`.
 
 O agendamento real (22:05 America/Sao_Paulo) fica provisionado e resolve o `dt`
-sozinho — a execução manual acima é o replay parametrizado (mesmo mecanismo do
+sozinho; a execução manual acima é o replay parametrizado (mesmo mecanismo do
 reprocessamento). Para desligá-lo durante experimentos:
 `terraform apply -var agendamento_ativo=false`.
 
@@ -73,21 +73,21 @@ reprocessamento). Para desligá-lo durante experimentos:
 3. **Data Catalog**: databases `bronze/silver/gold/ref` e as 9 tabelas Iceberg.
 4. **CloudWatch Logs**: uma linha de log JSON estruturado (evento `qualidade_particao`).
 5. **Quarentena**: contagem por motivo (job de consulta rápida ou Athena*).
-6. **Custo real**: Cost Explorer (D+1), filtro serviço Glue + tag `projeto` —
+6. **Custo real**: Cost Explorer (D+1), filtro serviço Glue + tag `projeto`;
    anotar o número medido para comparar com a estimativa da seção 2.
 7. **Alarme/SNS**: e-mail de teste (parar o schedule 1 dia ou `aws sns publish`).
 
-*Nota Athena: o suporte de leitura a Iceberg **V3** no Athena é recente/parcial;
+*Nota Athena: o suporte de leitura a Iceberg V3 no Athena é recente/parcial;
 se a query reclamar de `format-version`, a evidência do catálogo é o console do
 Glue Data Catalog + um job Spark de consulta (o cenário de compatibilidade de
 leitura previsto no ADR-004).
 
-## 5. Demonstrações de robustez (opcionais)
+## 5. Testes de robustez (opcionais)
 
 - **Idempotência**: reexecutar o dia 2026-08-21 e mostrar que as contagens
   do Gold não mudam (INSERT OVERWRITE dinâmico da partição).
 - **Falha + redrive**: renomear temporariamente o CSV no S3 → execução
-  falha no Bronze → e-mail do SNS chega → restaurar o arquivo → **Redrive** no
+  falha no Bronze → e-mail do SNS chega → restaurar o arquivo → Redrive no
   console retoma do estado que falhou, sem reprocessar o que já passou.
 
 ## 6. Encerrar
@@ -100,5 +100,5 @@ terraform -chdir=terraform destroy   # bucket com force_destroy: limpeza complet
 
 Depois da prova de funcionamento, a conta serve para provocar cenários e observar a
 plataforma: Bronze por partição do dia, vazão medida num dataset sintético 10× e
-extrapolação para 300 M/dia — roteiro, custos e tabelas em
+extrapolação para 300 M/dia. Roteiro, custos e tabelas em
 [`docs/labs_aws.md`](labs_aws.md).

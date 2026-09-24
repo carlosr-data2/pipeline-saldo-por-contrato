@@ -2,7 +2,7 @@
 
 Lê o histórico de runs pela AWS CLI (sem boto3, como o resto do projeto), agrupa por
 configuração de worker e por dia (--dt) e converte em minutos por job, DPU-hora,
-custo em US$ e — dado o volume do dia — linhas/s e linhas/s por vCPU: o número que
+custo em US$ e, dado o volume do dia, linhas/s e linhas/s por vCPU: o número que
 falta para extrapolar ao volume de produção. ExecutionTime é o tempo cobrado pelo
 Glue (exclui provisionamento); a cobrança mínima por run é de 1 minuto.
 
@@ -82,7 +82,7 @@ def main() -> None:
 
     completos = {chave: jobs for chave, jobs in por_dia.items() if len(jobs) == len(JOBS)}
     if not completos:
-        print("\nnenhum dia com os três jobs concluídos na janela — aumente --ultimos ou use --todos")
+        print("\nnenhum dia com os três jobs concluídos na janela; aumente --ultimos ou use --todos")
         return
 
     print("\n=== Pipeline completo por dia (soma dos três jobs) ===")

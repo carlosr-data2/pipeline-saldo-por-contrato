@@ -1,13 +1,13 @@
 """Schema do contrato de dados e tipagem do Bronze.
 
 O CSV chega com todos os campos como texto; a tipagem aplica o schema do contrato.
-Valor não conversível vira NULL — e NULL em campo obrigatório é capturado pela regra
+Valor não conversível vira NULL, e NULL em campo obrigatório é capturado pela regra
 de completude no Silver, com motivo. Nada é descartado na tipagem.
 """
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 
-# (campo, tipo do contrato) — todos NOT NULL no contrato
+# (campo, tipo do contrato), todos NOT NULL no contrato
 CAMPOS_CONTRATO = [
     ("id_transacao", "string"),
     ("id_contrato", "string"),

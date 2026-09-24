@@ -1,7 +1,7 @@
 # Alarmes-sentinela: AUSÊNCIA de sinal vira alerta (cobre inclusive trigger perdido).
 # Limitação conhecida: alarme de métrica cobre a janela por período diário;
 # a checagem fina "22:15 sem execução" em produção seria um schedule + verificação
-# de 5 linhas — trade-off registrado em docs/arquitetura.md.
+# de 5 linhas; trade-off registrado em docs/arquitetura.md.
 
 resource "aws_cloudwatch_metric_alarm" "sem_execucao_diaria" {
   alarm_name          = "${var.prefixo}-sem-execucao-24h"
